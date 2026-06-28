@@ -32,7 +32,7 @@ export class FastMode extends EventEmitter implements GameMode {
   private room: Room | null = null;
   private game: FastGame | null = null;
   private readonly timeouts = new Map<string, NodeJS.Timeout>();
-  private readonly options: FastGameOptions;
+  private options: FastGameOptions;
 
   constructor(
     private readonly roomId: string,
@@ -44,14 +44,23 @@ export class FastMode extends EventEmitter implements GameMode {
   }
 
   start(): void {
-    this.room = new Room(this.roomId);
+    this.room = this.room ?? new Room(this.roomId);
     this.game = new FastGame(this.wordRepository, this.options);
     this.emit('race:started', this.configSnapshot());
+    // Players who joined during the lobby phase predate this.game — register them now.
+    for (const player of this.room.players.values()) {
+      this.ensurePlayerInGame(player.playerId);
+    }
+  }
+
+  updateOptions(options: Partial<FastGameOptions>): void {
+    this.options = { ...this.options, ...options };
   }
 
   joinPlayer(playerId: string, nickname: string): void {
-    this.requireRoom().addPlayer({ playerId, nickname });
-    this.ensurePlayerInGame(playerId);
+    this.room = this.room ?? new Room(this.roomId);
+    this.room.addPlayer({ playerId, nickname });
+    if (this.game) this.ensurePlayerInGame(playerId);
   }
 
   submitGuess(playerId: string, nickname: string, guess: string): Attempt {

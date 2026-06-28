@@ -9,6 +9,7 @@ import { InMemoryWordRepository } from './infrastructure/persistence/words/in-me
 import { createRedisClient } from './infrastructure/persistence/redis/redis-client.js';
 import { RedisRoomRepository } from './infrastructure/persistence/redis/redis-room-repository.js';
 import { GameModeRegistry } from './infrastructure/realtime/game-mode-registry.js';
+import { HostMigrationTracker } from './infrastructure/realtime/host-migration-tracker.js';
 import type { RoundMode } from './application/game-modes/round-mode.js';
 import type { FastMode } from './application/game-modes/fast-mode.js';
 import cors from '@fastify/cors';
@@ -21,6 +22,7 @@ async function main(): Promise<void> {
   const roomRepository = new RedisRoomRepository(redis);
   const roundRegistry = new GameModeRegistry<RoundMode>();
   const fastRegistry = new GameModeRegistry<FastMode>();
+  const hostMigrationTracker = new HostMigrationTracker();
 
   const roomDeps = { roomRepository, wordRepository, roundRegistry, fastRegistry };
 
@@ -35,8 +37,8 @@ async function main(): Promise<void> {
     cors: { origin: env.corsOrigin },
   });
 
-  registerRoundModeHandlers(io.of('/round'), roundRegistry, roomDeps);
-  registerFastModeHandlers(io.of('/fast'), fastRegistry, roomDeps);
+  registerRoundModeHandlers(io.of('/round'), roundRegistry, roomDeps, hostMigrationTracker);
+  registerFastModeHandlers(io.of('/fast'), fastRegistry, roomDeps, hostMigrationTracker);
 
   await app.listen({ port: env.port, host: '0.0.0.0' });
 }

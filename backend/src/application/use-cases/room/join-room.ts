@@ -1,6 +1,7 @@
 import { MAX_PLAYERS_PER_ROOM, type RoomRecord, type RoomRepository } from '../../../domain/repositories/room-repository.js';
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
 import { RoomFullError } from '../../../domain/errors/room-full-error.js';
+import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-started-error.js';
 import type { GameMode } from '../../game-modes/game-mode.js';
 import type { RoundMode } from '../../game-modes/round-mode.js';
 import type { FastMode } from '../../game-modes/fast-mode.js';
@@ -30,8 +31,13 @@ export async function joinRoom(deps: JoinRoomDeps, input: JoinRoomInput): Promis
   }
 
   const alreadyJoined = record.players.some((player) => player.playerId === input.playerId);
-  if (!alreadyJoined && record.players.length >= MAX_PLAYERS_PER_ROOM) {
-    throw new RoomFullError(`Sala "${input.code}" está cheia`);
+  if (!alreadyJoined) {
+    if (record.status !== 'lobby') {
+      throw new RoomAlreadyStartedError(`Sala "${input.code}" já foi iniciada`);
+    }
+    if (record.players.length >= MAX_PLAYERS_PER_ROOM) {
+      throw new RoomFullError(`Sala "${input.code}" está cheia`);
+    }
   }
 
   const registry = record.mode === 'round' ? deps.roundRegistry : deps.fastRegistry;

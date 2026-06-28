@@ -89,85 +89,91 @@ Two rule clarifications resolved during implementation (not spelled out in the o
 
 ## Phase 4 — Private Rooms & Identity
 
+**Status: done.** All 21 tasks below landed in a single commit (`ab525e1 feat: create rooms feature`), which also pulled forward several Phase 5 building blocks ahead of schedule (`room-settings.ts`, `host-migration-tracker.ts`, and the `unauthorized-host-action`/`room-already-started` error types — see Phase 5 notes). Backend: 60 tests pass across 11 files (`room-code.spec.ts`, `create-room.spec.ts`, `join-room.spec.ts`, `game-mode-registry.spec.ts`, plus the pre-existing Phase 2/3 suites, now exercising the multi-room path). Both packages typecheck clean.
+
+Two gaps found during a post-implementation audit and fixed directly (not deferred — they'd have broken the app at runtime/build time):
+- **`@fastify/cors` was imported in `backend/src/index.ts` but never added to `backend/package.json`** — the backend would crash on startup outside a node_modules state left over from local dev. Added as a dependency.
+- **Frontend `RoomRecord` (`frontend/src/lib/types.ts`) was missing `isPublic`/`settings`/`status`**, which the backend's `RoomRecord` (`backend/src/domain/repositories/room-repository.ts`) already sends on every room payload. Brought the frontend type in sync (added `RoomSettings`/`RoomStatus` too) ahead of Phase 5, since the fields already exist on the wire.
+
 - **Private rooms**: created and shared via link/code with friends.
 - **No account required**: players join instantly with just a chosen **nickname**.
 - Nickname selection per session (no auth).
 
 **Deliverables**: `RoomRepository` (Redis-backed) with room codes, room creation/join use-cases, nickname-as-session-identity (no password, no persistent user record).
 
-P4.1: Add ioredis dependency + redisUrl env config
+P4.1: Add ioredis dependency + redisUrl env config — done (`backend/src/infrastructure/config/env.ts`)
 
-P4.2: room-code.ts value object + spec
+P4.2: room-code.ts value object + spec — done
 
-P4.3: room-repository.ts interface + RoomRecord + MAX_PLAYERS_PER_ROOM
+P4.3: room-repository.ts interface + RoomRecord + MAX_PLAYERS_PER_ROOM — done
 
-P4.4: room-not-found-error.ts + room-full-error.ts
+P4.4: room-not-found-error.ts + room-full-error.ts — done
 
-P4.5: in-memory-room-repository.ts test fixture
+P4.5: in-memory-room-repository.ts test fixture — done
 
-P4.6: redis-client.ts + redis-room-repository.ts
+P4.6: redis-client.ts + redis-room-repository.ts — done
 
-P4.7: game-mode-registry.ts + spec
+P4.7: game-mode-registry.ts + spec — done
 
-P4.8: round-mode.ts emits roomId in payloads
+P4.8: round-mode.ts emits roomId in payloads — done
 
-P4.9: fast-mode.ts emits roomId in payloads
+P4.9: fast-mode.ts emits roomId in payloads — done
 
-P4.10: create-room.ts use-case + spec
+P4.10: create-room.ts use-case + spec — done
 
-P4.11: join-room.ts use-case + spec
+P4.11: join-room.ts use-case + spec — done
 
-P4.12: extend guess-payload.ts DTOs with code field
+P4.12: extend guess-payload.ts DTOs with code field — done
 
-P4.13: http/routes/rooms.ts (POST /rooms, GET /rooms/:code)
+P4.13: http/routes/rooms.ts (POST /rooms, GET /rooms/:code) — done
 
-P4.14: rewrite register-round-mode-handlers.ts for multi-room
+P4.14: rewrite register-round-mode-handlers.ts for multi-room — done
 
-P4.15: rewrite register-fast-mode-handlers.ts for multi-room
+P4.15: rewrite register-fast-mode-handlers.ts for multi-room — done
 
-P4.16: rewire backend/src/index.ts
+P4.16: rewire backend/src/index.ts — done (missing `@fastify/cors` dependency fixed post-audit, see above)
 
-P4.17: frontend lib/api.ts (createRoom, getRoom)
+P4.17: frontend lib/api.ts (createRoom, getRoom) — done
 
-P4.18: App.tsx RoomChoiceScreen replacing ModePicker
+P4.18: App.tsx RoomChoiceScreen replacing ModePicker — done
 
-P4.19: useGame/useFastGame accept code param
+P4.19: useGame/useFastGame accept code param — done
 
-P4.20: lib/types.ts RoomRecord types
+P4.20: lib/types.ts RoomRecord types — done (was missing `isPublic`/`settings`/`status`, fixed post-audit, see above)
 
-P4.21: Backend tests green + manual two-tab check
+P4.21: Backend tests green + manual two-tab check — backend tests green (60/60); manual two-tab check still outstanding
 
-P5.1: room-settings.ts value object + spec
+P5.1: room-settings.ts value object + spec — done
 
-P5.2: invalid-room-settings/unauthorized-host/room-already-started errors
+P5.2: invalid-room-settings/unauthorized-host/room-already-started errors — done
 
-P5.3: extend RoomRecord with isPublic/settings/status + listPublicLobbies
+P5.3: extend RoomRecord with isPublic/settings/status + listPublicLobbies — done
 
-P5.4: in-memory-room-repository listPublicLobbies
+P5.4: in-memory-room-repository listPublicLobbies — done
 
-P5.5: redis-room-repository listPublicLobbies via SET
+P5.5: redis-room-repository listPublicLobbies via SET — done
 
-P5.6: host-migration-tracker.ts + spec
+P5.6: host-migration-tracker.ts + spec — done
 
-P5.7: update create-room.ts for isPublic/settings/status lobby
+P5.7: update create-room.ts for isPublic/settings/status lobby — done. `CreateRoomInput` now takes optional `isPublic`/`settings`; the room no longer auto-starts the game on creation — `RoundMode`/`FastMode` only get `joinPlayer`'d (lobby join), the actual round/race begins when `start-game` (P5.11) is invoked.
 
-P5.8: update join-room.ts for lobby vs in-progress branching
+P5.8: update join-room.ts for lobby vs in-progress branching — done. New (non-reconnecting) joins are rejected with `RoomAlreadyStartedError` once `status !== 'lobby'`; already-joined players (reconnects) are always let back in regardless of status, preserving the multi-tab/reconnect mechanism.
 
-P5.9: leave-room.ts use-case + spec
+P5.9: leave-room.ts use-case + spec — done (4 tests)
 
-P5.10: update-room-settings.ts use-case + spec
+P5.10: update-room-settings.ts use-case + spec — done (5 tests). Host-only, lobby-only; pushes the validated settings into the live `RoundMode`/`FastMode` instance via a new `updateOptions()` method on each.
 
-P5.11: start-game.ts use-case + spec
+P5.11: start-game.ts use-case + spec — done (5 tests). Host-only, lobby-only; calls `gameMode.start()` and flips `status` to `in-progress`. Required a `RoundMode`/`FastMode` fix: since players now join during the lobby (before `start()`), `FastMode.start()` was updated to register every already-joined player into the fresh `FastGame` (it previously assumed `start()` ran before anyone joined).
 
-P5.12: list-public-rooms.ts use-case + spec
+P5.12: list-public-rooms.ts use-case + spec — done (thin pass-through to `RoomRepository.listPublicLobbies()`)
 
-P5.13: migrate-host.ts use-case + spec
+P5.13: migrate-host.ts use-case + spec — done (3 tests). Picks the next player in join order, excluding the outgoing host.
 
-P5.14: rooms.ts routes - public list/settings/start endpoints
+P5.14: rooms.ts routes - public list/settings/start endpoints — done. Added `GET /rooms`, `PATCH /rooms/:code/settings`, `POST /rooms/:code/start`, with domain-error → HTTP-status mapping (404/403/409/400).
 
-P5.15: socket handlers - lobby:state/game:start/host:migrated wiring
+P5.15: socket handlers - lobby:state/game:start/host:migrated wiring — done, in both `register-round-mode-handlers.ts` and `register-fast-mode-handlers.ts`. New socket events: `room:leave`, `room:settings:update`, `room:start` (client-initiated, mirroring the HTTP routes but broadcasting live to the room); emits `lobby:state` while `status === 'lobby'` (instead of `room:state`) and `game:start` once the host starts the game. Host-disconnect grace period is wired via `HostMigrationTracker`: a `disconnect` handler checks whether the disconnecting socket was the current host and, if the grace period lapses without a reconnect, calls `migrate-host` and broadcasts `host:migrated`.
 
-P5.16: rewire index.ts with HostMigrationTracker + new use-cases
+P5.16: rewire index.ts with HostMigrationTracker + new use-cases — done. A single shared `HostMigrationTracker` instance is created in `index.ts` and passed to both namespace handler registrations (room codes are unique across modes, so one tracker suffices).
 
 P5.17: frontend api.ts - listPublicRooms/updateRoomSettings/startGame
 
@@ -185,6 +191,12 @@ Update planning.md with Phase 4 + Phase 5 status notes
 ---
 
 ## Phase 5 — Public Rooms, Lobby & Live Board
+
+**Status: backend done (P5.1–P5.16); frontend not started (P5.17–P5.22).** Backend test suite is at 78/78 passing (18 new tests across `leave-room`, `update-room-settings`, `start-game`, `list-public-rooms`, `migrate-host` specs), both packages typecheck and build clean.
+
+The lobby model required one real architectural change beyond the task list's wording: previously `createRoom` called `gameMode.start()` immediately, so the round/race timer began the instant the host created the room — before any other player could join. `RoundMode`/`FastMode` now support joining during a true pre-game lobby (`joinPlayer` lazily creates the room shell; `start()` reuses it instead of recreating it), and the actual game only begins when the host explicitly calls `start-game` (P5.11). This is what makes "lobby shows players before the game starts; host controls start" (the Phase 5 goal below) literally true rather than cosmetic.
+
+Remaining frontend work (P5.17–P5.21) and the closing manual check (P5.22) are not started — `frontend/src/lib/api.ts` has no `listPublicRooms`/`updateRoomSettings`/`startGame` calls yet, and there's no `Lobby.tsx`/`PublicRoomBrowser.tsx` UI, so a host currently has no way to trigger `room:start`/`room:settings:update` from the browser even though the backend fully supports it via socket events or the new HTTP routes.
 
 - **Public rooms**: open, anyone can join.
 - Lobby shows current players before the game starts; host (room creator) controls start/settings.

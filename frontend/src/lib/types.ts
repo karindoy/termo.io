@@ -1,8 +1,15 @@
 export type RoomMode = 'round' | 'fast';
+export type RoomStatus = 'lobby' | 'in-progress' | 'finished';
 
 export interface RoomPlayer {
   playerId: string;
   nickname: string;
+}
+
+export interface RoomSettings {
+  wordCount: number;
+  maxAttempts: number;
+  timeLimitMs: number;
 }
 
 export interface RoomRecord {
@@ -10,6 +17,9 @@ export interface RoomRecord {
   mode: RoomMode;
   hostId: string;
   createdAt: number;
+  isPublic: boolean;
+  settings: RoomSettings;
+  status: RoomStatus;
   players: RoomPlayer[];
 }
 

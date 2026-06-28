@@ -33,7 +33,7 @@ export class RoundMode extends EventEmitter implements GameMode {
   private room: Room | null = null;
   private game: Game | null = null;
   private timeoutHandle: NodeJS.Timeout | null = null;
-  private readonly options: GameOptions;
+  private options: GameOptions;
 
   constructor(
     private readonly roomId: string,
@@ -45,14 +45,19 @@ export class RoundMode extends EventEmitter implements GameMode {
   }
 
   start(): void {
-    this.room = new Room(this.roomId);
+    this.room = this.room ?? new Room(this.roomId);
     this.game = new Game(this.wordRepository, this.options);
     this.scheduleTimeout();
     this.emit('round:started', this.currentRoundSnapshot());
   }
 
+  updateOptions(options: Partial<GameOptions>): void {
+    this.options = { ...this.options, ...options };
+  }
+
   joinPlayer(playerId: string, nickname: string): void {
-    this.requireRoom().addPlayer({ playerId, nickname });
+    this.room = this.room ?? new Room(this.roomId);
+    this.room.addPlayer({ playerId, nickname });
   }
 
   submitGuess(playerId: string, nickname: string, guess: string): Attempt {

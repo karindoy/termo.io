@@ -19,3 +19,22 @@ export const joinPayloadSchema = z.object({
 });
 
 export type JoinPayload = z.infer<typeof joinPayloadSchema>;
+
+export const roomMembershipPayloadSchema = z.object({
+  code: roomCodeSchema,
+  playerId: z.string().min(1).max(64),
+});
+
+export type RoomMembershipPayload = z.infer<typeof roomMembershipPayloadSchema>;
+
+export const updateSettingsPayloadSchema = z.object({
+  code: roomCodeSchema,
+  playerId: z.string().min(1).max(64),
+  settings: z.object({
+    wordCount: z.number().int().optional(),
+    maxAttempts: z.number().int().optional(),
+    timeLimitMs: z.number().int().optional(),
+  }),
+});
+
+export type UpdateSettingsPayload = z.infer<typeof updateSettingsPayloadSchema>;
