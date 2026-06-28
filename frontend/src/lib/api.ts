@@ -44,22 +44,23 @@ export async function listPublicRooms(): Promise<RoomSummary[]> {
 export async function updateRoomSettings(
   code: string,
   playerId: string,
+  sessionSecret: string,
   settings: Partial<RoomSettings>,
 ): Promise<RoomRecord> {
   const response = await fetch(`${API_URL}/rooms/${encodeURIComponent(code)}/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ playerId, settings }),
+    body: JSON.stringify({ playerId, sessionSecret, settings }),
   });
 
   return parseOrThrow(response, 'Não foi possível atualizar as configurações da sala');
 }
 
-export async function startGame(code: string, playerId: string): Promise<RoomRecord> {
+export async function startGame(code: string, playerId: string, sessionSecret: string): Promise<RoomRecord> {
   const response = await fetch(`${API_URL}/rooms/${encodeURIComponent(code)}/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ playerId }),
+    body: JSON.stringify({ playerId, sessionSecret }),
   });
 
   return parseOrThrow(response, 'Não foi possível iniciar a partida');

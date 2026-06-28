@@ -6,6 +6,7 @@ import type {
   GameFinishedPayload,
   GuessResult,
   Player,
+  RoomSessionPayload,
   RoomState,
   RoundSnapshot,
   TieBreakStartedPayload,
@@ -25,6 +26,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roundSequenceRef = useRef<number | null>(null);
+  const sessionSecretRef = useRef<string | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -58,6 +60,10 @@ export function useGame(code: string, playerId: string, nickname: string) {
     });
 
     socket.on('disconnect', () => setConnected(false));
+
+    socket.on('room:session', (payload: RoomSessionPayload) => {
+      sessionSecretRef.current = payload.sessionSecret;
+    });
 
     socket.on('room:state', (state: RoomState) => {
       applyRound(state);
@@ -120,7 +126,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
   }, [code, playerId, nickname]);
 
   function submitGuess(guess: string): void {
-    socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess });
+    socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess, sessionSecret: sessionSecretRef.current });
   }
 
   return {

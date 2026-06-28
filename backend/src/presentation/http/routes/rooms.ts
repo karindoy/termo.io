@@ -14,6 +14,7 @@ import { RoomFullError } from '../../../domain/errors/room-full-error.js';
 import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-started-error.js';
 import { UnauthorizedHostActionError } from '../../../domain/errors/unauthorized-host-action-error.js';
 import { InvalidRoomSettingsError } from '../../../domain/errors/invalid-room-settings-error.js';
+import type { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
 
 const roomSettingsBodySchema = z.object({
   wordCount: z.number().int().optional(),
@@ -31,15 +32,18 @@ const createRoomBodySchema = z.object({
 
 const updateSettingsBodySchema = z.object({
   playerId: z.string().min(1).max(64),
+  sessionSecret: z.string().min(1).max(64),
   settings: roomSettingsBodySchema,
 });
 
 const startGameBodySchema = z.object({
   playerId: z.string().min(1).max(64),
+  sessionSecret: z.string().min(1).max(64),
 });
 
 export interface RoomsRoutesDeps extends CreateRoomDeps, ListPublicRoomsDeps, UpdateRoomSettingsDeps, StartGameDeps {
   roomRepository: RoomRepository;
+  sessionStore: PlayerSessionStore;
 }
 
 function sendDomainError(reply: FastifyReply, error: unknown): FastifyReply {
@@ -52,7 +56,7 @@ function sendDomainError(reply: FastifyReply, error: unknown): FastifyReply {
 }
 
 export async function roomsRoutes(app: FastifyInstance, deps: RoomsRoutesDeps): Promise<void> {
-  app.post('/rooms', async (request, reply) => {
+  app.post('/rooms', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const parsed = createRoomBodySchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ message: 'Dados de criação de sala inválidos' });
@@ -68,10 +72,16 @@ export async function roomsRoutes(app: FastifyInstance, deps: RoomsRoutesDeps): 
 
   app.get('/rooms', async (_request, reply) => {
     const rooms = await listPublicRooms(deps);
-    return reply.send(rooms);
+    // playerId identifies a seat, not a secret — but there is no reason an
+    // unauthenticated browse list needs to hand it out for every room either.
+    const sanitized = rooms.map((room) => ({
+      ...room,
+      players: room.players.map((player) => ({ nickname: player.nickname })),
+    }));
+    return reply.send(sanitized);
   });
 
-  app.get('/rooms/:code', async (request, reply) => {
+  app.get('/rooms/:code', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     const code = (request.params as { code: string }).code;
     if (!ROOM_CODE_PATTERN.test(code)) {
       return reply.status(400).send({ message: 'Código de sala inválido' });
@@ -91,6 +101,9 @@ export async function roomsRoutes(app: FastifyInstance, deps: RoomsRoutesDeps): 
     if (!ROOM_CODE_PATTERN.test(code) || !parsed.success) {
       return reply.status(400).send({ message: 'Dados de atualização de sala inválidos' });
     }
+    if (!deps.sessionStore.verify(code, parsed.data.playerId, parsed.data.sessionSecret)) {
+      return reply.status(401).send({ message: 'Sessão inválida — entre na sala novamente' });
+    }
 
     try {
       const record = await updateRoomSettings(deps, { code, ...parsed.data });
@@ -105,6 +118,9 @@ export async function roomsRoutes(app: FastifyInstance, deps: RoomsRoutesDeps): 
     const parsed = startGameBodySchema.safeParse(request.body);
     if (!ROOM_CODE_PATTERN.test(code) || !parsed.success) {
       return reply.status(400).send({ message: 'Dados de início de partida inválidos' });
+    }
+    if (!deps.sessionStore.verify(code, parsed.data.playerId, parsed.data.sessionSecret)) {
+      return reply.status(401).send({ message: 'Sessão inválida — entre na sala novamente' });
     }
 
     try {

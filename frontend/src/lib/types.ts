@@ -23,11 +23,24 @@ export interface RoomRecord {
   players: RoomPlayer[];
 }
 
-export type RoomSummary = Pick<RoomRecord, 'code' | 'mode' | 'hostId' | 'isPublic' | 'settings' | 'status' | 'players'>;
+// The public room browser is unauthenticated, so the backend redacts playerId
+// from each player here — it's a seat identifier other code treats as an
+// implicit credential, and an unauthenticated listing has no business handing it out.
+export interface PublicRoomPlayer {
+  nickname: string;
+}
+
+export type RoomSummary = Pick<RoomRecord, 'code' | 'mode' | 'isPublic' | 'settings' | 'status'> & {
+  players: PublicRoomPlayer[];
+};
 
 export interface HostMigratedPayload {
   code: string;
   hostId: string;
+}
+
+export interface RoomSessionPayload {
+  sessionSecret: string;
 }
 
 export type LetterStatus = 'correct' | 'present' | 'absent';

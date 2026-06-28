@@ -8,6 +8,7 @@ import { startGame } from '../../../application/use-cases/room/start-game.js';
 import { migrateHost } from '../../../application/use-cases/room/migrate-host.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import type { HostMigrationTracker } from '../../../infrastructure/realtime/host-migration-tracker.js';
+import type { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
 import {
   guessPayloadSchema,
   joinPayloadSchema,
@@ -20,12 +21,19 @@ export function registerRoundModeHandlers(
   registry: GameModeRegistry<RoundMode>,
   joinRoomDeps: JoinRoomDeps,
   hostMigrationTracker: HostMigrationTracker,
+  sessionStore: PlayerSessionStore,
 ): void {
-  registry.on('register', (code: string, gameMode: RoundMode) => bindBroadcast(io, registry, code, gameMode));
+  registry.on('register', (code: string, gameMode: RoundMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
     let joinedPlayerId: string | null = null;
+
+    function rejectUnauthorized(code: string, playerId: string, sessionSecret: string, errorEvent: string): boolean {
+      if (sessionStore.verify(code, playerId, sessionSecret)) return false;
+      socket.emit(errorEvent, { message: 'Sessão inválida — entre na sala novamente' });
+      return true;
+    }
 
     socket.on('room:join', async (rawPayload: unknown) => {
       const parsed = joinPayloadSchema.safeParse(rawPayload);
@@ -53,6 +61,9 @@ export function registerRoundModeHandlers(
         hostMigrationTracker.cancel(parsed.data.code);
       }
 
+      const sessionSecret = sessionStore.issue(parsed.data.code, parsed.data.playerId);
+      socket.emit('room:session', { sessionSecret });
+
       if (record.status === 'lobby') {
         io.to(parsed.data.code).emit('lobby:state', record);
         return;
@@ -78,6 +89,7 @@ export function registerRoundModeHandlers(
         socket.emit('room:error', { message: 'Payload de saída inválido' });
         return;
       }
+      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
       try {
         const { record, hostMigratedTo } = await leaveRoom(joinRoomDeps, parsed.data);
@@ -99,6 +111,7 @@ export function registerRoundModeHandlers(
         socket.emit('room:error', { message: 'Configurações inválidas' });
         return;
       }
+      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
       try {
         const record = await updateRoomSettings(joinRoomDeps, parsed.data);
@@ -115,6 +128,7 @@ export function registerRoundModeHandlers(
         socket.emit('room:error', { message: 'Payload de início inválido' });
         return;
       }
+      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
       try {
         const record = await startGame(joinRoomDeps, parsed.data);
@@ -131,6 +145,7 @@ export function registerRoundModeHandlers(
         socket.emit('guess:error', { message: 'Palpite inválido' });
         return;
       }
+      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'guess:error')) return;
 
       const gameMode = registry.get(parsed.data.code);
       if (!gameMode) {
@@ -167,12 +182,19 @@ export function registerRoundModeHandlers(
   });
 }
 
-function bindBroadcast(io: Namespace, registry: GameModeRegistry<RoundMode>, code: string, gameMode: RoundMode): void {
+function bindBroadcast(
+  io: Namespace,
+  registry: GameModeRegistry<RoundMode>,
+  sessionStore: PlayerSessionStore,
+  code: string,
+  gameMode: RoundMode,
+): void {
   gameMode.on('round:started', (snapshot) => io.to(snapshot.roomId).emit('round:started', snapshot));
   gameMode.on('word:resolved', (result) => io.to(result.roomId).emit('word:resolved', result));
   gameMode.on('tiebreak:started', (payload) => io.to(payload.roomId).emit('tiebreak:started', payload));
   gameMode.on('game:finished', (payload) => {
     io.to(payload.roomId).emit('game:finished', payload);
     registry.remove(code);
+    sessionStore.clear(code);
   });
 }

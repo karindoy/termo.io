@@ -11,6 +11,7 @@ import type {
   RaceConfigSnapshot,
   RaceFinishedPayload,
   RaceRoomState,
+  RoomSessionPayload,
 } from '../lib/types';
 
 const REVEAL_DISPLAY_MS = 4000;
@@ -26,6 +27,7 @@ export function useFastGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wordIndexRef = useRef<Record<string, number>>({});
+  const sessionSecretRef = useRef<string | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [config, setConfig] = useState<RaceConfigSnapshot | null>(null);
@@ -58,6 +60,10 @@ export function useFastGame(code: string, playerId: string, nickname: string) {
     });
 
     socket.on('disconnect', () => setConnected(false));
+
+    socket.on('room:session', (payload: RoomSessionPayload) => {
+      sessionSecretRef.current = payload.sessionSecret;
+    });
 
     socket.on('room:state', (state: RaceRoomState) => {
       setConfig(state);
@@ -118,7 +124,7 @@ export function useFastGame(code: string, playerId: string, nickname: string) {
   }, [code, playerId, nickname]);
 
   function submitGuess(guess: string): void {
-    socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess });
+    socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess, sessionSecret: sessionSecretRef.current });
   }
 
   return {

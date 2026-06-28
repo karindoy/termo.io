@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
-import type { HostMigratedPayload, RoomRecord, RoomSettings } from '../lib/types';
+import type { HostMigratedPayload, RoomRecord, RoomSessionPayload, RoomSettings } from '../lib/types';
 
 export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: string) {
   const { code, mode } = initialRoom;
   const socketRef = useRef<Socket | null>(null);
+  const sessionSecretRef = useRef<string | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState<RoomRecord>(initialRoom);
@@ -23,6 +24,10 @@ export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: st
     });
 
     socket.on('disconnect', () => setConnected(false));
+
+    socket.on('room:session', (payload: RoomSessionPayload) => {
+      sessionSecretRef.current = payload.sessionSecret;
+    });
 
     socket.on('lobby:state', (state: RoomRecord) => setRoom(state));
 
@@ -44,15 +49,15 @@ export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: st
   }, [code, mode, playerId, nickname]);
 
   function updateSettings(settings: Partial<RoomSettings>): void {
-    socketRef.current?.emit('room:settings:update', { code, playerId, settings });
+    socketRef.current?.emit('room:settings:update', { code, playerId, sessionSecret: sessionSecretRef.current, settings });
   }
 
   function startGame(): void {
-    socketRef.current?.emit('room:start', { code, playerId });
+    socketRef.current?.emit('room:start', { code, playerId, sessionSecret: sessionSecretRef.current });
   }
 
   function leaveRoom(): void {
-    socketRef.current?.emit('room:leave', { code, playerId });
+    socketRef.current?.emit('room:leave', { code, playerId, sessionSecret: sessionSecretRef.current });
   }
 
   return { connected, room, gameStarted, hostMigratedTo, error, updateSettings, startGame, leaveRoom };
