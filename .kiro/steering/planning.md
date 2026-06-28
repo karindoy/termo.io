@@ -70,6 +70,14 @@ Two items from the deliverables below are intentionally deferred, not missing by
 
 ## Phase 3 — Fast Mode (Time Attack)
 
+**Status: done.** `FastGame` (`backend/src/domain/entities/fast-game.ts`) and `FastMode` (`backend/src/application/game-modes/fast-mode.ts`) implement the rules below; `WordRound` (Phase 2) is reused unmodified (`maxAttempts: Infinity`) for per-player infinite-attempt rounds — no changes to Phase 2 domain code. 15 backend tests pass — `fast-game.spec.ts` covers independent per-player word progression, the must-solve-all-5-to-win rule, the timeout-disqualifies-but-doesn't-block-you rule, and the no-winner case; `fast-mode.spec.ts` adds per-player timer-expiry (via `vi.useFakeTimers`) and confirms a resolved player's timeout never fires after they solve early. Frontend (`frontend/src/hooks/useFastGame.ts`, `frontend/src/components/{RaceStatus,RaceLeaderboard,FastRevealBanner}.tsx`) adds a per-player word-index/timer indicator, a race leaderboard (progress through the 5 words, not score), a reveal banner, and a race-finished screen; both packages typecheck and build clean.
+
+Because Round Mode and Fast Mode now run side by side rather than one replacing the other (unlike the Phase 1→Phase 2 handoff), `backend/src/index.ts` starts both `RoundMode` and `FastMode` as separate `Game` instances on separate Socket.io namespaces (`/round`, `/fast`) rather than picking one as "the" live mode — a deliberate stand-in for Phase 5's real lobby/mode-selection UI. The frontend gained a minimal mode-picker screen (`frontend/src/App.tsx`) so both are reachable end-to-end; this picker is throwaway scaffolding, same spirit as Phase 1's scaffolding, and is expected to be replaced by the real lobby in Phase 5.
+
+Two rule clarifications resolved during implementation (not spelled out in the original bullet list):
+- **Per-player independent progress, not a room-wide shared word**: unlike Round Mode, each player races through the 5-word sequence at their own pace — their own word index, own attempts, own per-word timer. This is what makes "first to finish" well-defined per `product.md`'s "race to finish detection" framing.
+- **A forced timeout-reveal disqualifies that player from winning** (but doesn't block them from continuing to the next word, exactly as the original bullet intended by "isn't permanently locked out of finishing all 5"). If every player finishes the 5 words and nobody solved all of them without a timeout, the game ends with no winner (`winnerId: null`).
+
 - 5 words per game.
 - **Infinite attempts** per word (no 6-attempt cap).
 - The **first player to correctly guess all words wins the game** — it's a race, not a per-word point system.
