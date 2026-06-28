@@ -1,10 +1,14 @@
-import type { Server, Socket } from 'socket.io';
-import type { SingleWordMode } from '../../../application/game-modes/single-word-mode.js';
+import type { Namespace, Socket } from 'socket.io';
+import type { FastMode } from '../../../application/game-modes/fast-mode.js';
 import { submitGuess } from '../../../application/use-cases/submit-guess.js';
 import { guessPayloadSchema, joinPayloadSchema } from '../dto/guess-payload.js';
-import { WORD_LENGTH } from '../../../domain/entities/word.js';
 
-export function registerGameHandlers(io: Server, gameMode: SingleWordMode): void {
+export function registerFastModeHandlers(io: Namespace, gameMode: FastMode): void {
+  gameMode.on('race:started', (config) => io.emit('race:started', config));
+  gameMode.on('player:word-started', (snapshot) => io.emit('player:word-started', snapshot));
+  gameMode.on('player:word-resolved', (result) => io.emit('player:word-resolved', result));
+  gameMode.on('race:finished', (payload) => io.emit('race:finished', payload));
+
   io.on('connection', (socket: Socket) => {
     socket.on('room:join', (rawPayload: unknown) => {
       const parsed = joinPayloadSchema.safeParse(rawPayload);
@@ -13,15 +17,18 @@ export function registerGameHandlers(io: Server, gameMode: SingleWordMode): void
         return;
       }
 
+      gameMode.joinPlayer(parsed.data.playerId, parsed.data.nickname);
       const room = gameMode.getRoom();
-      const round = gameMode.getRound();
-      room.addPlayer({ playerId: parsed.data.playerId, nickname: parsed.data.nickname });
+      const game = gameMode.getGame();
+      const playerIds = Array.from(room.players.keys());
 
       socket.emit('room:state', {
-        wordLength: WORD_LENGTH,
+        ...gameMode.configSnapshot(),
         players: Array.from(room.players.values()),
-        attempts: round.attempts,
-        solvedBy: round.solvedBy,
+        progress: game.progressSummary(),
+        attemptsByPlayer: Object.fromEntries(playerIds.map((id) => [id, game.attemptsFor(id)])),
+        phase: game.phase,
+        winnerId: game.winnerId,
       });
 
       io.emit('room:players', Array.from(room.players.values()));
@@ -35,8 +42,9 @@ export function registerGameHandlers(io: Server, gameMode: SingleWordMode): void
       }
 
       try {
+        const wordIndex = gameMode.getGame().wordIndexFor(parsed.data.playerId);
         const result = submitGuess(gameMode, parsed.data);
-        io.emit('guess:result', result);
+        io.emit('guess:result', { ...result, wordIndex });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';
         socket.emit('guess:error', { message });

@@ -1,19 +1,55 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
-import type { Attempt, GuessResult, Player, RoomState } from '../lib/types';
+import type {
+  Attempt,
+  GameFinishedPayload,
+  GuessResult,
+  Player,
+  RoomState,
+  RoundSnapshot,
+  TieBreakStartedPayload,
+  WordResolvedPayload,
+} from '../lib/types';
+
+const REVEAL_DISPLAY_MS = 4000;
+
+export interface RevealInfo {
+  revealedWord: string;
+  reason: WordResolvedPayload['reason'];
+  winnerId: string | null;
+  isTieBreak: boolean;
+}
 
 export function useGame(playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
+  const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const roundSequenceRef = useRef<number | null>(null);
+
   const [connected, setConnected] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [attempts, setAttempts] = useState<Attempt[]>([]);
-  const [wordLength, setWordLength] = useState(5);
   const [solvedBy, setSolvedBy] = useState<string | null>(null);
+  const [round, setRound] = useState<RoundSnapshot | null>(null);
+  const [reveal, setReveal] = useState<RevealInfo | null>(null);
+  const [finished, setFinished] = useState<GameFinishedPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function applyRound(snapshot: RoundSnapshot): void {
+    roundSequenceRef.current = snapshot.roundSequence;
+    setRound(snapshot);
+  }
+
+  function clearRevealTimeout(): void {
+    if (revealTimeoutRef.current) {
+      clearTimeout(revealTimeoutRef.current);
+      revealTimeoutRef.current = null;
+    }
+  }
+
   useEffect(() => {
-    const socket = createSocket();
+    const socket = createSocket('round');
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -24,19 +60,53 @@ export function useGame(playerId: string, nickname: string) {
     socket.on('disconnect', () => setConnected(false));
 
     socket.on('room:state', (state: RoomState) => {
-      setWordLength(state.wordLength);
+      applyRound(state);
       setPlayers(state.players);
+      setScores(state.scores);
       setAttempts(state.attempts);
       setSolvedBy(state.solvedBy);
+      setFinished(null);
+      setReveal(null);
+      clearRevealTimeout();
     });
 
-    socket.on('room:players', (incomingPlayers: Player[]) => {
-      setPlayers(incomingPlayers);
+    socket.on('room:players', (incomingPlayers: Player[]) => setPlayers(incomingPlayers));
+
+    socket.on('round:started', (snapshot: RoundSnapshot) => {
+      applyRound(snapshot);
+      setAttempts([]);
+      setSolvedBy(null);
+      setError(null);
+    });
+
+    socket.on('tiebreak:started', (payload: TieBreakStartedPayload) => {
+      applyRound(payload);
+      setAttempts([]);
+      setSolvedBy(null);
+      setError(null);
+    });
+
+    socket.on('word:resolved', (result: WordResolvedPayload) => {
+      setScores(result.scores);
+      setReveal({
+        revealedWord: result.revealedWord,
+        reason: result.reason,
+        winnerId: result.winnerId,
+        isTieBreak: result.isTieBreak,
+      });
+      clearRevealTimeout();
+      revealTimeoutRef.current = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
+    });
+
+    socket.on('game:finished', (payload: GameFinishedPayload) => {
+      setFinished(payload);
+      setScores(payload.scores);
     });
 
     socket.on('guess:result', (result: GuessResult) => {
-      setAttempts((prev) => [...prev, result.attempt]);
       setError(null);
+      if (result.roundSequence !== roundSequenceRef.current) return;
+      setAttempts((prev) => [...prev, result.attempt]);
       if (result.solved) setSolvedBy(result.winnerId);
     });
 
@@ -44,6 +114,7 @@ export function useGame(playerId: string, nickname: string) {
     socket.on('room:error', (payload: { message: string }) => setError(payload.message));
 
     return () => {
+      clearRevealTimeout();
       socket.disconnect();
     };
   }, [playerId, nickname]);
@@ -52,5 +123,16 @@ export function useGame(playerId: string, nickname: string) {
     socketRef.current?.emit('guess:submit', { playerId, nickname, guess });
   }
 
-  return { connected, players, attempts, wordLength, solvedBy, error, submitGuess };
+  return {
+    connected,
+    players,
+    scores,
+    attempts,
+    solvedBy,
+    round,
+    reveal,
+    finished,
+    error,
+    submitGuess,
+  };
 }

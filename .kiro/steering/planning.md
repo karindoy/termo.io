@@ -20,6 +20,8 @@ Delivery is phased so each phase ships something playable end-to-end (backend + 
 
 ## Phase 1 — Single Word, Walking Skeleton
 
+**Status: done.** `SingleWordMode` (`backend/src/application/game-modes/single-word-mode.ts`) plus the Phase 1 socket handlers/frontend grid still exist as the throwaway scaffolding described below; `backend/src/index.ts` has since moved on to wiring `RoundMode` (Phase 2) as the live mode.
+
 **Goal**: prove the full stack end-to-end with the simplest possible game — one secret word, one room, no modes, no auth.
 
 - No game mode selection — only **1 word** per game.
@@ -38,6 +40,12 @@ Delivery is phased so each phase ships something playable end-to-end (backend + 
 ---
 
 ## Phase 2 — Round Mode
+
+**Status: done.** `Game`/`WordRound` (`backend/src/domain/entities/`) and `RoundMode` (`backend/src/application/game-modes/round-mode.ts`) implement all rules below and are wired as the active mode in `backend/src/index.ts`. 19 backend tests pass — `word-round.spec.ts` and `game.spec.ts` cover round transitions, scoring, and the full tie-break flow (including "nobody solves the penalty word, deal another"); `round-mode.spec.ts` adds the timer-expiry path (via `vi.useFakeTimers`) and the concurrent-guess race (two "simultaneous" guesses land correctly on old/new rounds thanks to Node's run-to-completion model — see the note in that test file). Frontend (`frontend/src/hooks/useGame.ts`, `frontend/src/components/{ScoreBoard,RoundStatus,WordRevealBanner}.tsx`) adds the scoreboard, word-index/timer/attempts-remaining indicator, a timed word-reveal banner, tie-break spectator gating, and a game-finished screen; both packages typecheck and build clean.
+
+Two items from the deliverables below are intentionally deferred, not missing by oversight:
+- **`PenaltyTieBreak` use-case**: the logic lives in `Game.advanceTieBreak`/`Game.resolveCurrentRound` rather than its own use-case file — revisit if/when tie-break rules need to vary independently of round resolution.
+- **Redis Lua/`MULTI`+`WATCH` atomicity** (see ACID section below): not implemented — the game still runs as a single in-process room, so the synchronous, single-threaded JS event loop already gives the same guarantee. This becomes a real requirement once room state moves to Redis for horizontal scaling (Phase 4+), not before.
 
 - 5 words per game.
 - Each word allows a **maximum of 6 attempts** per player.

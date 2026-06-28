@@ -2,9 +2,11 @@ import Fastify from 'fastify';
 import { Server } from 'socket.io';
 import { env } from './infrastructure/config/env.js';
 import { healthRoute } from './presentation/http/routes/health.js';
-import { registerGameHandlers } from './presentation/sockets/handlers/register-game-handlers.js';
+import { registerRoundModeHandlers } from './presentation/sockets/handlers/register-round-mode-handlers.js';
+import { registerFastModeHandlers } from './presentation/sockets/handlers/register-fast-mode-handlers.js';
 import { InMemoryWordRepository } from './infrastructure/persistence/words/in-memory-word-repository.js';
-import { SingleWordMode } from './application/game-modes/single-word-mode.js';
+import { RoundMode } from './application/game-modes/round-mode.js';
+import { FastMode } from './application/game-modes/fast-mode.js';
 
 async function main(): Promise<void> {
   const app = Fastify({ logger: true });
@@ -16,10 +18,14 @@ async function main(): Promise<void> {
   });
 
   const wordRepository = new InMemoryWordRepository();
-  const gameMode = new SingleWordMode('room-1', wordRepository);
-  gameMode.start();
 
-  registerGameHandlers(io, gameMode);
+  const roundMode = new RoundMode('room-round', wordRepository);
+  registerRoundModeHandlers(io.of('/round'), roundMode);
+  roundMode.start();
+
+  const fastMode = new FastMode('room-fast', wordRepository);
+  registerFastModeHandlers(io.of('/fast'), fastMode);
+  fastMode.start();
 
   await app.listen({ port: env.port, host: '0.0.0.0' });
 }

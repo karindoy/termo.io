@@ -1,10 +1,14 @@
-import type { Server, Socket } from 'socket.io';
-import type { SingleWordMode } from '../../../application/game-modes/single-word-mode.js';
+import type { Namespace, Socket } from 'socket.io';
+import type { RoundMode } from '../../../application/game-modes/round-mode.js';
 import { submitGuess } from '../../../application/use-cases/submit-guess.js';
 import { guessPayloadSchema, joinPayloadSchema } from '../dto/guess-payload.js';
-import { WORD_LENGTH } from '../../../domain/entities/word.js';
 
-export function registerGameHandlers(io: Server, gameMode: SingleWordMode): void {
+export function registerRoundModeHandlers(io: Namespace, gameMode: RoundMode): void {
+  gameMode.on('round:started', (snapshot) => io.emit('round:started', snapshot));
+  gameMode.on('word:resolved', (result) => io.emit('word:resolved', result));
+  gameMode.on('tiebreak:started', (payload) => io.emit('tiebreak:started', payload));
+  gameMode.on('game:finished', (payload) => io.emit('game:finished', payload));
+
   io.on('connection', (socket: Socket) => {
     socket.on('room:join', (rawPayload: unknown) => {
       const parsed = joinPayloadSchema.safeParse(rawPayload);
@@ -13,15 +17,16 @@ export function registerGameHandlers(io: Server, gameMode: SingleWordMode): void
         return;
       }
 
+      gameMode.joinPlayer(parsed.data.playerId, parsed.data.nickname);
       const room = gameMode.getRoom();
-      const round = gameMode.getRound();
-      room.addPlayer({ playerId: parsed.data.playerId, nickname: parsed.data.nickname });
+      const game = gameMode.getGame();
 
       socket.emit('room:state', {
-        wordLength: WORD_LENGTH,
+        ...gameMode.currentRoundSnapshot(),
         players: Array.from(room.players.values()),
-        attempts: round.attempts,
-        solvedBy: round.solvedBy,
+        scores: Object.fromEntries(game.scores),
+        attempts: game.currentRound.attempts,
+        solvedBy: game.currentRound.solvedBy,
       });
 
       io.emit('room:players', Array.from(room.players.values()));
@@ -35,8 +40,9 @@ export function registerGameHandlers(io: Server, gameMode: SingleWordMode): void
       }
 
       try {
+        const roundSequence = gameMode.getGame().roundSequenceNumber;
         const result = submitGuess(gameMode, parsed.data);
-        io.emit('guess:result', result);
+        io.emit('guess:result', { ...result, roundSequence });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';
         socket.emit('guess:error', { message });
