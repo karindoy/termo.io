@@ -11,28 +11,28 @@ import { RaceStatus } from './components/RaceStatus';
 import { RaceLeaderboard } from './components/RaceLeaderboard';
 import { FastRevealBanner } from './components/FastRevealBanner';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
+import { createRoom, getRoom, RoomLookupError } from './lib/api';
+import type { RoomMode, RoomRecord } from './lib/types';
 
 const playerId = getOrCreatePlayerId();
 
-type GameModeKind = 'round' | 'fast';
-
 export function App() {
   const [nickname, setNickname] = useState<string | null>(getStoredNickname());
-  const [mode, setMode] = useState<GameModeKind | null>(null);
+  const [room, setRoom] = useState<RoomRecord | null>(null);
 
   if (!nickname) {
     return <NicknameForm onSubmit={(value) => { storeNickname(value); setNickname(value); }} />;
   }
 
-  if (!mode) {
-    return <ModePicker onSelect={setMode} />;
+  if (!room) {
+    return <RoomChoiceScreen nickname={nickname} onRoomReady={setRoom} />;
   }
 
-  if (mode === 'round') {
-    return <RoundGameRoom playerId={playerId} nickname={nickname} onBack={() => setMode(null)} />;
+  if (room.mode === 'round') {
+    return <RoundGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
   }
 
-  return <FastGameRoom playerId={playerId} nickname={nickname} onBack={() => setMode(null)} />;
+  return <FastGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
 }
 
 function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
@@ -54,19 +54,91 @@ function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
   );
 }
 
-function ModePicker({ onSelect }: { onSelect: (mode: GameModeKind) => void }) {
+function RoomChoiceScreen({
+  nickname,
+  onRoomReady,
+}: {
+  nickname: string;
+  onRoomReady: (room: RoomRecord) => void;
+}) {
+  const [mode, setMode] = useState<RoomMode>('round');
+  const [joinCode, setJoinCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCreate(): Promise<void> {
+    setLoading(true);
+    setError(null);
+    try {
+      const room = await createRoom({ hostId: playerId, nickname, mode });
+      onRoomReady(room);
+    } catch (err) {
+      setError(err instanceof RoomLookupError ? err.message : 'Não foi possível criar a sala');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleJoin(): Promise<void> {
+    if (joinCode.trim().length === 0) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const room = await getRoom(joinCode.trim().toUpperCase());
+      onRoomReady(room);
+    } catch (err) {
+      setError(err instanceof RoomLookupError ? err.message : 'Não foi possível entrar na sala');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 320, margin: '80px auto', color: '#fff' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 360, margin: '80px auto', color: '#fff' }}>
       <h1>termo.io</h1>
-      <p>Escolha o modo de jogo</p>
-      <button onClick={() => onSelect('round')}>Modo Round</button>
-      <button onClick={() => onSelect('fast')}>Modo Fast</button>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p>Criar uma sala</p>
+        <select value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
+          <option value="round">Modo Round</option>
+          <option value="fast">Modo Fast</option>
+        </select>
+        <button disabled={loading} onClick={handleCreate}>
+          Criar sala
+        </button>
+      </section>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p>Entrar com código</p>
+        <input
+          value={joinCode}
+          onChange={(event) => setJoinCode(event.target.value)}
+          placeholder="Código da sala"
+          maxLength={8}
+        />
+        <button disabled={loading} onClick={handleJoin}>
+          Entrar
+        </button>
+      </section>
+
+      {error && <p style={{ background: '#8d3838', padding: 8, borderRadius: 4 }}>{error}</p>}
     </div>
   );
 }
 
-function RoundGameRoom({ playerId, nickname, onBack }: { playerId: string; nickname: string; onBack: () => void }) {
+function RoundGameRoom({
+  code,
+  playerId,
+  nickname,
+  onBack,
+}: {
+  code: string;
+  playerId: string;
+  nickname: string;
+  onBack: () => void;
+}) {
   const { connected, players, scores, attempts, solvedBy, round, reveal, finished, error, submitGuess } = useGame(
+    code,
     playerId,
     nickname,
   );
@@ -117,6 +189,7 @@ function RoundGameRoom({ playerId, nickname, onBack }: { playerId: string; nickn
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>termo.io — Round</h1>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
           <button onClick={onBack}>Trocar modo</button>
         </div>
@@ -181,9 +254,19 @@ function RoundGameRoom({ playerId, nickname, onBack }: { playerId: string; nickn
   );
 }
 
-function FastGameRoom({ playerId, nickname, onBack }: { playerId: string; nickname: string; onBack: () => void }) {
+function FastGameRoom({
+  code,
+  playerId,
+  nickname,
+  onBack,
+}: {
+  code: string;
+  playerId: string;
+  nickname: string;
+  onBack: () => void;
+}) {
   const { connected, config, players, progress, attemptsByPlayer, reveal, finished, error, submitGuess } =
-    useFastGame(playerId, nickname);
+    useFastGame(code, playerId, nickname);
   const [currentGuess, setCurrentGuess] = useState('');
 
   const wordLength = config?.wordLength ?? 5;
@@ -228,6 +311,7 @@ function FastGameRoom({ playerId, nickname, onBack }: { playerId: string; nickna
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>termo.io — Fast</h1>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
           <button onClick={onBack}>Trocar modo</button>
         </div>

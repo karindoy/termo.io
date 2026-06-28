@@ -1,3 +1,18 @@
+export type RoomMode = 'round' | 'fast';
+
+export interface RoomPlayer {
+  playerId: string;
+  nickname: string;
+}
+
+export interface RoomRecord {
+  code: string;
+  mode: RoomMode;
+  hostId: string;
+  createdAt: number;
+  players: RoomPlayer[];
+}
+
 export type LetterStatus = 'correct' | 'present' | 'absent';
 
 export interface LetterFeedback {

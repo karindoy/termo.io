@@ -22,7 +22,7 @@ export interface FastRevealInfo {
   playerWon: boolean;
 }
 
-export function useFastGame(playerId: string, nickname: string) {
+export function useFastGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wordIndexRef = useRef<Record<string, number>>({});
@@ -54,7 +54,7 @@ export function useFastGame(playerId: string, nickname: string) {
 
     socket.on('connect', () => {
       setConnected(true);
-      socket.emit('room:join', { playerId, nickname });
+      socket.emit('room:join', { code, playerId, nickname });
     });
 
     socket.on('disconnect', () => setConnected(false));
@@ -115,10 +115,10 @@ export function useFastGame(playerId: string, nickname: string) {
       clearRevealTimeout();
       socket.disconnect();
     };
-  }, [playerId, nickname]);
+  }, [code, playerId, nickname]);
 
   function submitGuess(guess: string): void {
-    socketRef.current?.emit('guess:submit', { playerId, nickname, guess });
+    socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess });
   }
 
   return {

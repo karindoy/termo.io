@@ -60,7 +60,7 @@ describe('FastMode', () => {
     gameMode.submitGuess('p1', 'Ana', 'TERMO');
     gameMode.submitGuess('p1', 'Ana', 'PONTE');
 
-    expect(onFinished).toHaveBeenCalledWith({ winnerId: 'p1' });
+    expect(onFinished).toHaveBeenCalledWith({ roomId: 'room-1', winnerId: 'p1' });
     expect(gameMode.isResolved()).toBe(true);
     expect(gameMode.getWinner()).toBe('p1');
   });
@@ -134,7 +134,7 @@ describe('FastMode', () => {
       vi.advanceTimersByTime(60_000);
       vi.advanceTimersByTime(60_000);
 
-      expect(onFinished).toHaveBeenCalledWith({ winnerId: null });
+      expect(onFinished).toHaveBeenCalledWith({ roomId: 'room-1', winnerId: null });
       expect(gameMode.isResolved()).toBe(true);
       expect(gameMode.getWinner()).toBeNull();
     } finally {

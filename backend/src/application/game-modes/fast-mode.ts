@@ -14,12 +14,14 @@ const DEFAULT_OPTIONS: FastGameOptions = {
 };
 
 export interface RaceConfigSnapshot {
+  roomId: string;
   wordCount: number;
   wordLength: number;
   timeLimitMs: number;
 }
 
 export interface PlayerRoundSnapshot {
+  roomId: string;
   playerId: string;
   wordIndex: number;
   roundStartedAt: number;
@@ -87,12 +89,18 @@ export class FastMode extends EventEmitter implements GameMode {
   }
 
   configSnapshot(): RaceConfigSnapshot {
-    return { wordCount: this.options.wordCount, wordLength: WORD_LENGTH, timeLimitMs: this.options.timeLimitMs };
+    return {
+      roomId: this.roomId,
+      wordCount: this.options.wordCount,
+      wordLength: WORD_LENGTH,
+      timeLimitMs: this.options.timeLimitMs,
+    };
   }
 
   playerRoundSnapshot(playerId: string): PlayerRoundSnapshot {
     const game = this.requireGame();
     return {
+      roomId: this.roomId,
       playerId,
       wordIndex: game.wordIndexFor(playerId),
       roundStartedAt: game.currentRoundFor(playerId).startedAt,
@@ -120,11 +128,11 @@ export class FastMode extends EventEmitter implements GameMode {
     const game = this.requireGame();
     const result = game.resolvePlayerWord(playerId, reason);
 
-    this.emit('player:word-resolved', result);
+    this.emit('player:word-resolved', { roomId: this.roomId, ...result });
 
     if (result.gameFinished) {
       this.clearAllTimeouts();
-      this.emit('race:finished', { winnerId: result.winnerId });
+      this.emit('race:finished', { roomId: this.roomId, winnerId: result.winnerId });
       return;
     }
 

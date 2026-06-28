@@ -95,6 +95,93 @@ Two rule clarifications resolved during implementation (not spelled out in the o
 
 **Deliverables**: `RoomRepository` (Redis-backed) with room codes, room creation/join use-cases, nickname-as-session-identity (no password, no persistent user record).
 
+P4.1: Add ioredis dependency + redisUrl env config
+
+P4.2: room-code.ts value object + spec
+
+P4.3: room-repository.ts interface + RoomRecord + MAX_PLAYERS_PER_ROOM
+
+P4.4: room-not-found-error.ts + room-full-error.ts
+
+P4.5: in-memory-room-repository.ts test fixture
+
+P4.6: redis-client.ts + redis-room-repository.ts
+
+P4.7: game-mode-registry.ts + spec
+
+P4.8: round-mode.ts emits roomId in payloads
+
+P4.9: fast-mode.ts emits roomId in payloads
+
+P4.10: create-room.ts use-case + spec
+
+P4.11: join-room.ts use-case + spec
+
+P4.12: extend guess-payload.ts DTOs with code field
+
+P4.13: http/routes/rooms.ts (POST /rooms, GET /rooms/:code)
+
+P4.14: rewrite register-round-mode-handlers.ts for multi-room
+
+P4.15: rewrite register-fast-mode-handlers.ts for multi-room
+
+P4.16: rewire backend/src/index.ts
+
+P4.17: frontend lib/api.ts (createRoom, getRoom)
+
+P4.18: App.tsx RoomChoiceScreen replacing ModePicker
+
+P4.19: useGame/useFastGame accept code param
+
+P4.20: lib/types.ts RoomRecord types
+
+P4.21: Backend tests green + manual two-tab check
+
+P5.1: room-settings.ts value object + spec
+
+P5.2: invalid-room-settings/unauthorized-host/room-already-started errors
+
+P5.3: extend RoomRecord with isPublic/settings/status + listPublicLobbies
+
+P5.4: in-memory-room-repository listPublicLobbies
+
+P5.5: redis-room-repository listPublicLobbies via SET
+
+P5.6: host-migration-tracker.ts + spec
+
+P5.7: update create-room.ts for isPublic/settings/status lobby
+
+P5.8: update join-room.ts for lobby vs in-progress branching
+
+P5.9: leave-room.ts use-case + spec
+
+P5.10: update-room-settings.ts use-case + spec
+
+P5.11: start-game.ts use-case + spec
+
+P5.12: list-public-rooms.ts use-case + spec
+
+P5.13: migrate-host.ts use-case + spec
+
+P5.14: rooms.ts routes - public list/settings/start endpoints
+
+P5.15: socket handlers - lobby:state/game:start/host:migrated wiring
+
+P5.16: rewire index.ts with HostMigrationTracker + new use-cases
+
+P5.17: frontend api.ts - listPublicRooms/updateRoomSettings/startGame
+
+P5.18: Lobby.tsx component
+
+P5.19: PublicRoomBrowser.tsx component
+
+P5.20: App.tsx - insert Lobby step + host-migration toast
+
+P5.21: lib/types.ts - RoomSettings/RoomSummary/RoomStatus
+
+P5.22: Backend tests green + manual lobby/settings/host-migration check
+
+Update planning.md with Phase 4 + Phase 5 status notes
 ---
 
 ## Phase 5 — Public Rooms, Lobby & Live Board

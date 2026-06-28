@@ -17,6 +17,7 @@ const DEFAULT_OPTIONS: GameOptions = {
 };
 
 export interface RoundSnapshot {
+  roomId: string;
   roundSequence: number;
   wordIndex: number;
   wordCount: number;
@@ -90,6 +91,7 @@ export class RoundMode extends EventEmitter implements GameMode {
   currentRoundSnapshot(): RoundSnapshot {
     const game = this.requireGame();
     return {
+      roomId: this.roomId,
       roundSequence: game.roundSequenceNumber,
       wordIndex: game.wordIndexNumber,
       wordCount: this.options.wordCount,
@@ -120,13 +122,13 @@ export class RoundMode extends EventEmitter implements GameMode {
     const connectedIds = Array.from(this.requireRoom().players.keys());
     const result = game.resolveCurrentRound(reason, winnerId, connectedIds);
 
-    this.emit('word:resolved', result);
+    this.emit('word:resolved', { roomId: this.roomId, ...result });
     this.handleResolutionOutcome(result);
   }
 
   private handleResolutionOutcome(result: RoundResolutionResult): void {
     if (result.gameStatus === 'finished') {
-      this.emit('game:finished', { winnerIds: result.finalWinnerIds, scores: result.scores });
+      this.emit('game:finished', { roomId: this.roomId, winnerIds: result.finalWinnerIds, scores: result.scores });
       return;
     }
 

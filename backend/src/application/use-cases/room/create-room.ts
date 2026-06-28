@@ -1,0 +1,65 @@
+import { generateRoomCode } from '../../../domain/value-objects/room-code.js';
+import type { RoomMode, RoomRecord, RoomRepository } from '../../../domain/repositories/room-repository.js';
+import type { WordRepository } from '../../../domain/repositories/word-repository.js';
+import { RoundMode } from '../../game-modes/round-mode.js';
+import { FastMode } from '../../game-modes/fast-mode.js';
+import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
+import { createRoomSettings } from '../../../domain/value-objects/room-settings.js';
+
+const CODE_GENERATION_ATTEMPTS = 5;
+
+export interface CreateRoomDeps {
+  roomRepository: RoomRepository;
+  wordRepository: WordRepository;
+  roundRegistry: GameModeRegistry<RoundMode>;
+  fastRegistry: GameModeRegistry<FastMode>;
+}
+
+export interface CreateRoomInput {
+  hostId: string;
+  nickname: string;
+  mode: RoomMode;
+}
+
+export async function createRoom(deps: CreateRoomDeps, input: CreateRoomInput): Promise<RoomRecord> {
+  const code = await generateUniqueRoomCode(deps.roomRepository);
+
+  if (input.mode === 'round') {
+    const gameMode = new RoundMode(code, deps.wordRepository);
+    gameMode.start();
+    gameMode.joinPlayer(input.hostId, input.nickname);
+    deps.roundRegistry.register(code, gameMode);
+  } else {
+    const gameMode = new FastMode(code, deps.wordRepository);
+    gameMode.start();
+    gameMode.joinPlayer(input.hostId, input.nickname);
+    deps.fastRegistry.register(code, gameMode);
+  }
+
+  const record: RoomRecord = {
+    code,
+    mode: input.mode,
+    hostId: input.hostId,
+    createdAt: Date.now(),
+    isPublic: true, // ou false, conforme a regra da aplicação
+    settings: createRoomSettings(),
+    status: 'lobby',
+    players: [
+      {
+        playerId: input.hostId,
+        nickname: input.nickname,
+      },
+    ],
+  };
+
+  await deps.roomRepository.create(record);
+  return record;
+}
+
+async function generateUniqueRoomCode(roomRepository: RoomRepository): Promise<string> {
+  for (let attempt = 0; attempt < CODE_GENERATION_ATTEMPTS; attempt++) {
+    const code = generateRoomCode();
+    if (!(await roomRepository.findByCode(code))) return code;
+  }
+  throw new Error('Não foi possível gerar um código de sala único');
+}
