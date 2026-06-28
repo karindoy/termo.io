@@ -175,24 +175,21 @@ P5.15: socket handlers - lobby:state/game:start/host:migrated wiring — done, i
 
 P5.16: rewire index.ts with HostMigrationTracker + new use-cases — done. A single shared `HostMigrationTracker` instance is created in `index.ts` and passed to both namespace handler registrations (room codes are unique across modes, so one tracker suffices).
 
-P5.17: frontend api.ts - listPublicRooms/updateRoomSettings/startGame
+P5.17: frontend api.ts - listPublicRooms/updateRoomSettings/startGame — done
 
-P5.18: Lobby.tsx component
+P5.18: Lobby.tsx component — done, backed by a new `frontend/src/hooks/useLobby.ts` (not in the original task list, but required: it owns the lobby's socket connection — join, `lobby:state`/`game:start`/`host:migrated` listeners, and the `room:settings:update`/`room:start`/`room:leave` emitters — mirroring how `useGame`/`useFastGame` own the in-game socket).
 
-P5.19: PublicRoomBrowser.tsx component
+P5.19: PublicRoomBrowser.tsx component — done. Rendered inside `RoomChoiceScreen`; fetches `GET /rooms` on mount with a manual refresh button (no live socket updates for the browse list itself — out of scope, matches the "matchmaking" not "live spectating" framing).
 
-P5.20: App.tsx - insert Lobby step + host-migration toast
+P5.20: App.tsx - insert Lobby step + host-migration toast — done. `App` now branches on `room.status === 'lobby'` to render `<Lobby>` before `RoundGameRoom`/`FastGameRoom`; the host-migration notice is rendered inside `Lobby` itself (owned by the `useLobby` hook's state) rather than as a separate App-level toast component — same step, simpler ownership. `RoomChoiceScreen` also gained an "isPublic" checkbox so created rooms can actually appear in the new public browser.
 
-P5.21: lib/types.ts - RoomSettings/RoomSummary/RoomStatus
+P5.22: Backend tests green + manual lobby/settings/host-migration check — done. Backend: 78/78 tests pass. Manual check: ran the real stack (backend + a local Redis container + the Vite dev server) and drove it with two headless-Chromium tabs (Playwright, since neither `chromium-cli` nor system Chromium deps were available in this sandbox — ran via the official `mcr.microsoft.com/playwright` Docker image instead). Verified end-to-end: host creates a public Round room → lands in a lobby with host controls; second player finds it via the public room browser and joins, sees a host crown on the first player and a disabled, greyed-out settings form; host changes word count from 5→3 and the second player's lobby view updates live via `lobby:state` with no reload; host clicks "Iniciar partida" and **both** tabs transition automatically via `game:start` into the real word-grid game, already reflecting the updated word count ("Palavra 1 de 3"); submitted a guess and got correct green/yellow/gray feedback. Zero browser console errors in either tab.
 
-P5.22: Backend tests green + manual lobby/settings/host-migration check
-
-Update planning.md with Phase 4 + Phase 5 status notes
 ---
 
 ## Phase 5 — Public Rooms, Lobby & Live Board
 
-**Status: backend done (P5.1–P5.16); frontend not started (P5.17–P5.22).** Backend test suite is at 78/78 passing (18 new tests across `leave-room`, `update-room-settings`, `start-game`, `list-public-rooms`, `migrate-host` specs), both packages typecheck and build clean.
+**Status: done (P5.1–P5.22).** Backend test suite is at 78/78 passing (18 new tests across `leave-room`, `update-room-settings`, `start-game`, `list-public-rooms`, `migrate-host` specs), both packages typecheck and build clean, and the full lobby flow (create → public browse/join → live settings sync → host start → in-game transition) was exercised end-to-end in a real two-tab browser session (see P5.22 below).
 
 The lobby model required one real architectural change beyond the task list's wording: previously `createRoom` called `gameMode.start()` immediately, so the round/race timer began the instant the host created the room — before any other player could join. `RoundMode`/`FastMode` now support joining during a true pre-game lobby (`joinPlayer` lazily creates the room shell; `start()` reuses it instead of recreating it), and the actual game only begins when the host explicitly calls `start-game` (P5.11). This is what makes "lobby shows players before the game starts; host controls start" (the Phase 5 goal below) literally true rather than cosmetic.
 

@@ -10,6 +10,8 @@ import { WordRevealBanner } from './components/WordRevealBanner';
 import { RaceStatus } from './components/RaceStatus';
 import { RaceLeaderboard } from './components/RaceLeaderboard';
 import { FastRevealBanner } from './components/FastRevealBanner';
+import { Lobby } from './components/Lobby';
+import { PublicRoomBrowser } from './components/PublicRoomBrowser';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
 import { createRoom, getRoom, RoomLookupError } from './lib/api';
 import type { RoomMode, RoomRecord } from './lib/types';
@@ -26,6 +28,12 @@ export function App() {
 
   if (!room) {
     return <RoomChoiceScreen nickname={nickname} onRoomReady={setRoom} />;
+  }
+
+  if (room.status === 'lobby') {
+    return (
+      <Lobby room={room} playerId={playerId} nickname={nickname} onGameStart={setRoom} onBack={() => setRoom(null)} />
+    );
   }
 
   if (room.mode === 'round') {
@@ -62,6 +70,7 @@ function RoomChoiceScreen({
   onRoomReady: (room: RoomRecord) => void;
 }) {
   const [mode, setMode] = useState<RoomMode>('round');
+  const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +79,7 @@ function RoomChoiceScreen({
     setLoading(true);
     setError(null);
     try {
-      const room = await createRoom({ hostId: playerId, nickname, mode });
+      const room = await createRoom({ hostId: playerId, nickname, mode, isPublic });
       onRoomReady(room);
     } catch (err) {
       setError(err instanceof RoomLookupError ? err.message : 'Não foi possível criar a sala');
@@ -79,12 +88,12 @@ function RoomChoiceScreen({
     }
   }
 
-  async function handleJoin(): Promise<void> {
-    if (joinCode.trim().length === 0) return;
+  async function handleJoinByCode(code: string): Promise<void> {
+    if (code.trim().length === 0) return;
     setLoading(true);
     setError(null);
     try {
-      const room = await getRoom(joinCode.trim().toUpperCase());
+      const room = await getRoom(code.trim().toUpperCase());
       onRoomReady(room);
     } catch (err) {
       setError(err instanceof RoomLookupError ? err.message : 'Não foi possível entrar na sala');
@@ -103,6 +112,10 @@ function RoomChoiceScreen({
           <option value="round">Modo Round</option>
           <option value="fast">Modo Fast</option>
         </select>
+        <label>
+          <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
+          {' '}Sala pública (aparece na lista de salas)
+        </label>
         <button disabled={loading} onClick={handleCreate}>
           Criar sala
         </button>
@@ -116,10 +129,12 @@ function RoomChoiceScreen({
           placeholder="Código da sala"
           maxLength={8}
         />
-        <button disabled={loading} onClick={handleJoin}>
+        <button disabled={loading} onClick={() => handleJoinByCode(joinCode)}>
           Entrar
         </button>
       </section>
+
+      <PublicRoomBrowser onJoin={(code) => handleJoinByCode(code)} />
 
       {error && <p style={{ background: '#8d3838', padding: 8, borderRadius: 4 }}>{error}</p>}
     </div>

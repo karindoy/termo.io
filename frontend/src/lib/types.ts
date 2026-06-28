@@ -23,6 +23,13 @@ export interface RoomRecord {
   players: RoomPlayer[];
 }
 
+export type RoomSummary = Pick<RoomRecord, 'code' | 'mode' | 'hostId' | 'isPublic' | 'settings' | 'status' | 'players'>;
+
+export interface HostMigratedPayload {
+  code: string;
+  hostId: string;
+}
+
 export type LetterStatus = 'correct' | 'present' | 'absent';
 
 export interface LetterFeedback {
