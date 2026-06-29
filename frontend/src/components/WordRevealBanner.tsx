@@ -19,5 +19,5 @@ export function WordRevealBanner({ reveal, players }: WordRevealBannerProps) {
     message = `${prefix}❌ Tentativas esgotadas! A palavra era: ${reveal.revealedWord}`;
   }
 
-  return <p style={{ background: '#3a5a7a', padding: 8, borderRadius: 4 }}>{message}</p>;
+  return <p className="banner banner-info">{message}</p>;
 }

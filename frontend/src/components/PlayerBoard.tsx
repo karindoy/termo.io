@@ -10,7 +10,7 @@ interface PlayerBoardProps {
 export function PlayerBoard({ nickname, wordLength, attempts }: PlayerBoardProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <strong>{nickname}</strong>
+      <strong style={{ color: 'var(--color-text-muted)' }}>{nickname}</strong>
       <WordGrid wordLength={wordLength} attempts={attempts} />
     </div>
   );

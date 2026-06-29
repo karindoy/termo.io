@@ -44,41 +44,44 @@ export function Lobby({
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: '60px auto', display: 'flex', flexDirection: 'column', gap: 16, color: '#fff' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="centered-shell" style={{ maxWidth: 480 }}>
+      <header className="app-header" style={{ borderRadius: 8, border: '1px solid var(--color-border)' }}>
         <h1>Sala {room.code}</h1>
-        <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
+        <span className="status-pill">{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
       </header>
 
-      <p>
+      <p style={{ color: 'var(--color-text-muted)' }}>
         Modo: {room.mode === 'round' ? 'Round' : 'Fast'} · {room.isPublic ? 'Pública' : 'Privada'}
       </p>
 
       {hostMigratedTo && (
-        <p style={{ background: '#3a3a3c', padding: 8, borderRadius: 4 }}>
+        <p className="banner banner-warning">
           👑 {hostMigratedTo === playerId ? 'Você agora é o host da sala.' : 'O host da sala mudou.'}
         </p>
       )}
-      {error && <p style={{ background: '#8d3838', padding: 8, borderRadius: 4 }}>{error}</p>}
+      {error && <p className="banner banner-error">{error}</p>}
 
-      <section>
+      <section className="card">
         <h2>Jogadores</h2>
-        <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <ul className="row-list">
           {room.players.map((player) => (
-            <li key={player.playerId}>
-              {player.playerId === room.hostId ? '👑 ' : ''}
-              {player.nickname}
-              {player.playerId === playerId ? ' (você)' : ''}
+            <li key={player.playerId} className={['row-item', player.playerId === playerId ? 'is-self' : ''].join(' ').trim()}>
+              <span>{player.nickname}</span>
+              <span className="badge">
+                {player.playerId === room.hostId ? <span className="tag-host">host</span> : null}
+                {player.playerId === playerId ? ' você' : ''}
+              </span>
             </li>
           ))}
         </ul>
       </section>
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <section className="card">
         <h2>Configurações</h2>
-        <label>
+        <label className="field">
           Número de palavras
           <input
+            className="input"
             type="number"
             min={1}
             max={15}
@@ -88,9 +91,10 @@ export function Lobby({
           />
         </label>
         {room.mode === 'round' && (
-          <label>
+          <label className="field">
             Tentativas por palavra
             <input
+              className="input"
               type="number"
               min={1}
               max={10}
@@ -100,9 +104,10 @@ export function Lobby({
             />
           </label>
         )}
-        <label>
+        <label className="field">
           Tempo por palavra (segundos)
           <input
+            className="input"
             type="number"
             min={30}
             max={900}
@@ -113,15 +118,17 @@ export function Lobby({
         </label>
       </section>
 
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         {isHost ? (
-          <button disabled={!connected} onClick={startGame}>
+          <button className="btn btn-primary" disabled={!connected} onClick={startGame}>
             Iniciar partida
           </button>
         ) : (
-          <p>Aguardando o host iniciar a partida…</p>
+          <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>Aguardando o host iniciar a partida…</p>
         )}
-        <button onClick={handleLeave}>Sair da sala</button>
+        <button className="btn btn-ghost" onClick={handleLeave}>
+          Sair da sala
+        </button>
       </div>
     </div>
   );

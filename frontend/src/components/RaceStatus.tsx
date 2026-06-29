@@ -21,7 +21,7 @@ export function RaceStatus({ config, progress, myAttemptsCount }: RaceStatusProp
   const seconds = remainingSeconds % 60;
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="card" style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
       <span>
         Palavra {Math.min(progress.wordIndex + 1, config.wordCount)} de {config.wordCount}
       </span>

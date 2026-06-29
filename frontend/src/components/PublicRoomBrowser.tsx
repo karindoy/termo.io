@@ -24,31 +24,30 @@ export function PublicRoomBrowser({ onJoin }: { onJoin: (code: string) => void }
   }, []);
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <section className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p>Salas públicas</p>
-        <button disabled={loading} onClick={refresh}>
+        <h2>Salas públicas</h2>
+        <button className="btn btn-ghost btn-sm" disabled={loading} onClick={refresh}>
           Atualizar
         </button>
       </div>
 
-      {rooms.length === 0 && !loading && <p>Nenhuma sala pública aberta agora.</p>}
+      {rooms.length === 0 && !loading && <p style={{ color: 'var(--color-text-muted)' }}>Nenhuma sala pública aberta agora.</p>}
 
-      <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <ul className="row-list">
         {rooms.map((room) => (
-          <li
-            key={room.code}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#2a2a2c', padding: 8, borderRadius: 4 }}
-          >
+          <li key={room.code} className="row-item">
             <span>
               {room.code} · {room.mode === 'round' ? 'Round' : 'Fast'} · {room.players.length} jogador(es)
             </span>
-            <button onClick={() => onJoin(room.code)}>Entrar</button>
+            <button className="btn btn-sm" onClick={() => onJoin(room.code)}>
+              Entrar
+            </button>
           </li>
         ))}
       </ul>
 
-      {error && <p style={{ background: '#8d3838', padding: 8, borderRadius: 4 }}>{error}</p>}
+      {error && <p className="banner banner-error">{error}</p>}
     </section>
   );
 }

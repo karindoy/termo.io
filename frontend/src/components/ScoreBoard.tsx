@@ -11,21 +11,12 @@ export function ScoreBoard({ players, scores, tieBreakCandidates, ownPlayerId }:
   const ranked = [...players].sort((a, b) => (scores[b.playerId] ?? 0) - (scores[a.playerId] ?? 0));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 200 }}>
-      <h2 style={{ margin: 0 }}>Placar</h2>
+    <div className="card" style={{ minWidth: 200 }}>
+      <h2>Placar</h2>
       {ranked.map((player) => {
         const isTieBreakCandidate = tieBreakCandidates?.includes(player.playerId) ?? false;
         return (
-          <div
-            key={player.playerId}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              padding: '4px 8px',
-              borderRadius: 4,
-              background: player.playerId === ownPlayerId ? '#2a2a2c' : 'transparent',
-            }}
-          >
+          <div key={player.playerId} className={['row-item', player.playerId === ownPlayerId ? 'is-self' : ''].join(' ').trim()}>
             <span>
               {tieBreakCandidates ? (isTieBreakCandidate ? '⚔️ ' : '👀 ') : ''}
               {player.nickname}
@@ -34,7 +25,7 @@ export function ScoreBoard({ players, scores, tieBreakCandidates, ownPlayerId }:
           </div>
         );
       })}
-      {ranked.length === 0 && <p>Nenhum jogador ainda.</p>}
+      {ranked.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum jogador ainda.</p>}
     </div>
   );
 }

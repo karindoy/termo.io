@@ -2,10 +2,10 @@ import type { Attempt, LetterStatus } from '../lib/types';
 
 const ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
-const STATUS_COLOR: Record<LetterStatus, string> = {
-  correct: '#538d4e',
-  present: '#b59f3b',
-  absent: '#3a3a3c',
+const STATUS_CLASS: Record<LetterStatus, string> = {
+  correct: 'key-correct',
+  present: 'key-present',
+  absent: 'key-absent',
 };
 
 const STATUS_PRIORITY: Record<LetterStatus, number> = {
@@ -25,34 +25,28 @@ export function Keyboard({ attempts, onLetter, onEnter, onBackspace }: KeyboardP
   const letterStatus = buildLetterStatusMap(attempts);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+    <div className="keyboard">
       {ROWS.map((row, rowIndex) => (
-        <div key={rowIndex} style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-          {row.split('').map((letter) => (
-            <button
-              key={letter}
-              onClick={() => onLetter(letter)}
-              style={{
-                minWidth: 32,
-                height: 42,
-                backgroundColor: letterStatus[letter] ? STATUS_COLOR[letterStatus[letter]!] : '#818384',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 4,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {letter}
-            </button>
-          ))}
+        <div key={rowIndex} className="keyboard-row">
+          {row.split('').map((letter) => {
+            const status = letterStatus[letter];
+            return (
+              <button
+                key={letter}
+                onClick={() => onLetter(letter)}
+                className={['key', status ? STATUS_CLASS[status] : ''].join(' ').trim()}
+              >
+                {letter}
+              </button>
+            );
+          })}
         </div>
       ))}
-      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-        <button onClick={onEnter} style={{ height: 42, padding: '0 16px' }}>
+      <div className="keyboard-row">
+        <button onClick={onEnter} className="key key-wide">
           Enviar
         </button>
-        <button onClick={onBackspace} style={{ height: 42, padding: '0 16px' }}>
+        <button onClick={onBackspace} className="key key-wide">
           ⌫
         </button>
       </div>
