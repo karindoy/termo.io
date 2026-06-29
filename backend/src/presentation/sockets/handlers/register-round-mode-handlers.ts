@@ -15,6 +15,7 @@ import {
   roomMembershipPayloadSchema,
   updateSettingsPayloadSchema,
 } from '../dto/guess-payload.js';
+import { redactAttempt, redactAttemptsForViewer } from '../dto/redact-attempt.js';
 
 export function registerRoundModeHandlers(
   io: Namespace,
@@ -76,7 +77,7 @@ export function registerRoundModeHandlers(
         ...gameMode.currentRoundSnapshot(),
         players: Array.from(room.players.values()),
         scores: Object.fromEntries(game.scores),
-        attempts: game.currentRound.attempts,
+        attempts: redactAttemptsForViewer(game.currentRound.attempts, parsed.data.playerId),
         solvedBy: game.currentRound.solvedBy,
       });
 
@@ -156,7 +157,12 @@ export function registerRoundModeHandlers(
       try {
         const roundSequence = gameMode.getGame().roundSequenceNumber;
         const result = submitGuess(gameMode, parsed.data);
-        io.to(parsed.data.code).emit('guess:result', { ...result, roundSequence });
+        socket.emit('guess:result', { ...result, roundSequence });
+        socket.to(parsed.data.code).emit('guess:result', {
+          ...result,
+          attempt: redactAttempt(result.attempt),
+          roundSequence,
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';
         socket.emit('guess:error', { message });

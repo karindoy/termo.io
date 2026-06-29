@@ -15,6 +15,7 @@ import {
   roomMembershipPayloadSchema,
   updateSettingsPayloadSchema,
 } from '../dto/guess-payload.js';
+import { redactAttempt } from '../dto/redact-attempt.js';
 
 export function registerFastModeHandlers(
   io: Namespace,
@@ -77,7 +78,12 @@ export function registerFastModeHandlers(
         ...gameMode.configSnapshot(),
         players: Array.from(room.players.values()),
         progress: game.progressSummary(),
-        attemptsByPlayer: Object.fromEntries(playerIds.map((id) => [id, game.attemptsFor(id)])),
+        attemptsByPlayer: Object.fromEntries(
+          playerIds.map((id) => [
+            id,
+            id === parsed.data.playerId ? game.attemptsFor(id) : game.attemptsFor(id).map(redactAttempt),
+          ]),
+        ),
         phase: game.phase,
         winnerId: game.winnerId,
       });
@@ -158,7 +164,12 @@ export function registerFastModeHandlers(
       try {
         const wordIndex = gameMode.getGame().wordIndexFor(parsed.data.playerId);
         const result = submitGuess(gameMode, parsed.data);
-        io.to(parsed.data.code).emit('guess:result', { ...result, wordIndex });
+        socket.emit('guess:result', { ...result, wordIndex });
+        socket.to(parsed.data.code).emit('guess:result', {
+          ...result,
+          attempt: redactAttempt(result.attempt),
+          wordIndex,
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';
         socket.emit('guess:error', { message });
