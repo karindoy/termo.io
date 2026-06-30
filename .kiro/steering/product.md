@@ -49,13 +49,19 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 
 ## Core Features (initial scope)
 
-- Room creation (public/private) and instant join via code/link.
-- Nickname selection per session (no auth).
-- Championship Mode and Race Mode game logic.
-- Shared real-time board: every player's guesses, attempt count, and letter feedback (colors + positions) visible to all players in the room as they happen.
-- Flexible letter input: within the active guess row, a player can reposition the cursor with arrow keys or by clicking/tapping any cell, then insert/overwrite the letter at that position — not limited to typing strictly left-to-right from the first empty cell.
-- Scoring (Championship Mode) and race-to-finish detection (Race Mode).
-- Brazilian Portuguese word list/dictionary for secret words and valid-guess validation: fixed 5-letter length, accent-insensitive matching (base letter matches its accented counterpart), no repeat-avoidance — the same word can legitimately reappear across games/sessions.
+ - Room creation (public/private) and instant join via code/link.
+ - Nickname selection per session (no auth).
+ - Championship Mode and Race Mode game logic.
+ - Shared real-time board: every player's guesses, attempt count, and letter feedback (colors + positions) visible to all players in the room as they happen.
+ - Flexible letter input: within the active guess row, a player can reposition the cursor with arrow keys or by clicking/tapping any cell, then insert/overwrite the letter at that position — not limited to typing strictly left-to-right from the first empty cell.
+ - Scoring (Championship Mode) and race-to-finish detection (Race Mode).
+ - Brazilian Portuguese word list/dictionary for secret words and valid-guess validation: fixed 5-letter length, accent-insensitive matching (base letter matches its accented counterpart), no repeat-avoidance — the same word can legitimately reappear across games/sessions.
+ - After a game finishes, a new match automatically begins after a 5-second countdown, preserving the room and its current players.
+ - local player's word grid remains fixed in place, while other players' word grids stay permanently on the left side of the screen with all attempt rows pre-rendered from the start to prevent layout shifts, up to down.
+ - keyboard is permanently anchored to the bottom of the screen across all game modes and screen sizes.
+ - room settings allow selecting from 30 seconds to 10 minutes per round, with values stored internally as milliseconds but not be visible to user.
+ - if no player guesses the current word within the initial 6 attempts, every eligible player receives 2 additional attempts on the same word before the game advances.
+ - when a player finishes all words and wins the race, a winner modal is immediately displayed to every player in the room before the end-of-race summary is shown.
 
 ## Out of scope (for now)
 

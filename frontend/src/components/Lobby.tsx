@@ -105,16 +105,20 @@ export function Lobby({
           </label>
         )}
         <label className="field">
-          Tempo por palavra (segundos)
-          <input
+          Tempo por palavra
+          <select
             className="input"
-            type="number"
-            min={30}
-            max={900}
             disabled={!isHost}
-            value={Math.round(settingsDraft.timeLimitMs / 1000)}
-            onChange={(event) => handleSettingsChange('timeLimitMs', Number(event.target.value) * 1000)}
-          />
+            value={settingsDraft.timeLimitMs}
+            onChange={(event) => handleSettingsChange('timeLimitMs', Number(event.target.value))}
+          >
+            <option value={30_000}>30 segundos</option>
+            <option value={60_000}>1 minuto</option>
+            <option value={120_000}>2 minutos</option>
+            <option value={180_000}>3 minutos</option>
+            <option value={300_000}>5 minutos</option>
+            <option value={600_000}>10 minutos</option>
+          </select>
         </label>
       </section>
 

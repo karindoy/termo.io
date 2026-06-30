@@ -110,6 +110,10 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess, sessionSecret: sessionSecretRef.current });
   }
 
+  function restartGame(): void {
+    socketRef.current?.emit('room:restart', { code, playerId });
+  }
+
   return {
     connected,
     config,
@@ -119,5 +123,6 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     revealHistory,
     finished,
     submitGuess,
+    restartGame,
   };
 }

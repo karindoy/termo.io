@@ -17,13 +17,13 @@ describe('createRoomSettings', () => {
     { maxAttempts: 0 },
     { maxAttempts: 11 },
     { timeLimitMs: 29_999 },
-    { timeLimitMs: 900_001 },
+    { timeLimitMs: 600_001 },
   ])('rejects out-of-bounds settings %j', (override) => {
     expect(() => createRoomSettings(override)).toThrow(InvalidRoomSettingsError);
   });
 
   it('accepts the boundary values', () => {
     expect(() => createRoomSettings({ wordCount: 1, maxAttempts: 1, timeLimitMs: 30_000 })).not.toThrow();
-    expect(() => createRoomSettings({ wordCount: 15, maxAttempts: 10, timeLimitMs: 900_000 })).not.toThrow();
+    expect(() => createRoomSettings({ wordCount: 15, maxAttempts: 10, timeLimitMs: 600_000 })).not.toThrow();
   });
 });

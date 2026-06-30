@@ -19,9 +19,10 @@ interface KeyboardProps {
   onLetter: (letter: string) => void;
   onEnter: () => void;
   onBackspace: () => void;
+  disabled?: boolean;
 }
 
-export function Keyboard({ attempts, onLetter, onEnter, onBackspace }: KeyboardProps) {
+export function Keyboard({ attempts, onLetter, onEnter, onBackspace, disabled }: KeyboardProps) {
   const letterStatus = buildLetterStatusMap(attempts);
 
   return (
@@ -33,6 +34,7 @@ export function Keyboard({ attempts, onLetter, onEnter, onBackspace }: KeyboardP
             return (
               <button
                 key={letter}
+                disabled={disabled}
                 onClick={() => onLetter(letter)}
                 className={['key', status ? STATUS_CLASS[status] : ''].join(' ').trim()}
               >
@@ -43,10 +45,10 @@ export function Keyboard({ attempts, onLetter, onEnter, onBackspace }: KeyboardP
         </div>
       ))}
       <div className="keyboard-row">
-        <button onClick={onEnter} className="key key-wide">
+        <button disabled={disabled} onClick={onEnter} className="key key-wide">
           Enviar
         </button>
-        <button onClick={onBackspace} className="key key-wide">
+        <button disabled={disabled} onClick={onBackspace} className="key key-wide">
           ⌫
         </button>
       </div>

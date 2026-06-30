@@ -37,6 +37,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
   const [reveal, setReveal] = useState<RevealInfo | null>(null);
   const [finished, setFinished] = useState<GameFinishedPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [extraAttempts, setExtraAttempts] = useState(false);
 
   function applyRound(snapshot: RoundSnapshot): void {
     roundSequenceRef.current = snapshot.roundSequence;
@@ -83,6 +84,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
       setAttempts([]);
       setSolvedBy(null);
       setError(null);
+      setExtraAttempts(false);
     });
 
     socket.on('tiebreak:started', (payload: TieBreakStartedPayload) => {
@@ -90,6 +92,12 @@ export function useGame(code: string, playerId: string, nickname: string) {
       setAttempts([]);
       setSolvedBy(null);
       setError(null);
+      setExtraAttempts(false);
+    });
+
+    socket.on('round:extra-attempts', (snapshot: RoundSnapshot) => {
+      applyRound(snapshot);
+      setExtraAttempts(true);
     });
 
     socket.on('word:resolved', (result: WordResolvedPayload) => {
@@ -129,6 +137,10 @@ export function useGame(code: string, playerId: string, nickname: string) {
     socketRef.current?.emit('guess:submit', { code, playerId, nickname, guess, sessionSecret: sessionSecretRef.current });
   }
 
+  function restartGame(): void {
+    socketRef.current?.emit('room:restart', { code, playerId });
+  }
+
   return {
     connected,
     players,
@@ -139,6 +151,8 @@ export function useGame(code: string, playerId: string, nickname: string) {
     reveal,
     finished,
     error,
+    extraAttempts,
     submitGuess,
+    restartGame,
   };
 }

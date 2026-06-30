@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS: RoomSettings = {
 const BOUNDS = {
   wordCount: { min: 1, max: 15 },
   maxAttempts: { min: 1, max: 10 },
-  timeLimitMs: { min: 30 * 1000, max: 15 * 60 * 1000 },
+  timeLimitMs: { min: 30 * 1000, max: 10 * 60 * 1000 },
 };
 
 export function createRoomSettings(input: Partial<RoomSettings> = {}): RoomSettings {

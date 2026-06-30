@@ -117,7 +117,12 @@ export class ChampionshipMode extends EventEmitter implements GameMode {
     if (round.solvedBy) {
       this.resolveRound('solved', round.solvedBy);
     } else if (round.allPlayersExhausted(connectedIds)) {
-      this.resolveRound('exhausted', null);
+      if (!round.extraAttemptsGranted) {
+        round.grantExtraAttempts(2);
+        this.emit('round:extra-attempts', this.currentRoundSnapshot());
+      } else {
+        this.resolveRound('exhausted', null);
+      }
     }
   }
 

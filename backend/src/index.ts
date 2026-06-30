@@ -43,8 +43,9 @@ async function main(): Promise<void> {
     cors: { origin: env.corsOrigin },
   });
 
-  registerChampionshipModeHandlers(io.of('/championship'), championshipRegistry, roomDeps, hostMigrationTracker, sessionStore);
-  registerRaceModeHandlers(io.of('/race'), raceRegistry, roomDeps, hostMigrationTracker, sessionStore);
+  const restartRoomDeps = { roomRepository, wordRepository, championshipRegistry, raceRegistry };
+  registerChampionshipModeHandlers(io.of('/championship'), championshipRegistry, roomDeps, hostMigrationTracker, sessionStore, restartRoomDeps);
+  registerRaceModeHandlers(io.of('/race'), raceRegistry, roomDeps, hostMigrationTracker, sessionStore, restartRoomDeps);
 
   await app.listen({ port: env.port, host: '0.0.0.0' });
 }

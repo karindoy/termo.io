@@ -30,6 +30,13 @@ export const roomMembershipPayloadSchema = z.object({
 
 export type RoomMembershipPayload = z.infer<typeof roomMembershipPayloadSchema>;
 
+export const restartPayloadSchema = z.object({
+  code: roomCodeSchema,
+  playerId: z.string().min(1).max(64),
+});
+
+export type RestartPayload = z.infer<typeof restartPayloadSchema>;
+
 export const updateSettingsPayloadSchema = z.object({
   code: roomCodeSchema,
   playerId: z.string().min(1).max(64),

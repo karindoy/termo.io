@@ -38,10 +38,10 @@ export function App() {
   }
 
   if (room.mode === 'championship') {
-    return <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
+    return <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={() => setRoom(null)} />;
   }
 
-  return <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
+  return <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={() => setRoom(null)} />;
 }
 
 function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
@@ -146,22 +146,46 @@ function RoomChoiceScreen({
   );
 }
 
+const RESTART_COUNTDOWN_SECS = 15;
+
 function ChampionshipGameRoom({
   code,
   playerId,
   nickname,
+  isHost,
   onBack,
 }: {
   code: string;
   playerId: string;
   nickname: string;
+  isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, players, scores, attempts, solvedBy, round, reveal, finished, error, submitGuess } = useGame(
+  const { connected, players, scores, attempts, solvedBy, round, reveal, finished, error, extraAttempts, submitGuess, restartGame } = useGame(
     code,
     playerId,
     nickname,
   );
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!finished) {
+      setCountdown(null);
+      return;
+    }
+    setCountdown(RESTART_COUNTDOWN_SECS);
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          if (isHost) restartGame();
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [finished]);
 
   const wordLength = round?.wordLength ?? 5;
   const myAttempts = useMemo(() => attempts.filter((attempt) => attempt.playerId === playerId), [attempts, playerId]);
@@ -200,6 +224,8 @@ function ChampionshipGameRoom({
     return () => window.removeEventListener('keydown', onKeyDown);
   });
 
+  const otherPlayerRows = round?.maxAttempts ?? 6;
+
   return (
     <div id="championship-room" className="app-shell">
       <header id="championship-header" className="app-header">
@@ -213,7 +239,7 @@ function ChampionshipGameRoom({
         </div>
       </header>
 
-      <main id="championship-main" className="app-main">
+      <main id="championship-main" className="app-main app-main-with-keyboard">
         {round && !finished && <RoundStatus round={round} myAttemptsCount={myAttempts.length} />}
 
         {finished && (
@@ -225,9 +251,17 @@ function ChampionshipGameRoom({
             venceu o jogo!
           </p>
         )}
+        {countdown !== null && (
+          <p className="banner banner-warning">
+            Nova partida em {countdown}…
+          </p>
+        )}
         {reveal && <WordRevealBanner reveal={reveal} players={players} />}
         {isTieBreakSpectator && (
           <p className="banner banner-warning">👀 Você não está no desempate — aguarde o resultado.</p>
+        )}
+        {extraAttempts && (
+          <p className="banner banner-warning">Ninguém acertou — cada jogador recebe mais 2 tentativas!</p>
         )}
         {isRoundOver && !finished && (
           <p className="banner banner-success">
@@ -236,8 +270,8 @@ function ChampionshipGameRoom({
         )}
         {error && <p className="banner banner-error">{error}</p>}
 
-        <section id="championship-board-section" style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-          <div id="championship-other-players">
+        <section id="championship-board-section" className="game-board-section">
+          <div id="championship-other-players" className="other-players-column">
             <h2>Outros jogadores</h2>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {otherPlayers.map((player) => (
@@ -246,31 +280,22 @@ function ChampionshipGameRoom({
                   nickname={player.nickname}
                   wordLength={wordLength}
                   attempts={attempts.filter((attempt) => attempt.playerId === player.playerId)}
+                  totalRows={otherPlayerRows}
                 />
               ))}
               {otherPlayers.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum outro jogador na sala ainda.</p>}
             </div>
           </div>
 
-          <div id="championship-my-word">
-            <div id="championship-board-panel" className="board-panel">
-              <WordGrid
-                wordLength={wordLength}
-                attempts={myAttempts}
-                activeGuess={canGuess ? guessInput.letters : undefined}
-                activeCursor={canGuess ? guessInput.cursor : undefined}
-                activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
-                onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
-              />
-              {canGuess && (
-                <Keyboard
-                  attempts={myAttempts}
-                  onLetter={guessInput.typeLetter}
-                  onEnter={handleEnter}
-                  onBackspace={guessInput.backspace}
-                />
-              )}
-            </div>
+          <div id="championship-my-word" className="my-word-column">
+            <WordGrid
+              wordLength={wordLength}
+              attempts={myAttempts}
+              activeGuess={canGuess ? guessInput.letters : undefined}
+              activeCursor={canGuess ? guessInput.cursor : undefined}
+              activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
+              onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+            />
           </div>
 
           <ScoreBoard
@@ -281,6 +306,16 @@ function ChampionshipGameRoom({
           />
         </section>
       </main>
+
+      <div className="keyboard-footer">
+        <Keyboard
+          attempts={myAttempts}
+          onLetter={guessInput.typeLetter}
+          onEnter={handleEnter}
+          onBackspace={guessInput.backspace}
+          disabled={!canGuess}
+        />
+      </div>
     </div>
   );
 }
@@ -289,15 +324,39 @@ function RaceGameRoom({
   code,
   playerId,
   nickname,
+  isHost,
   onBack,
 }: {
   code: string;
   playerId: string;
   nickname: string;
+  isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, config, players, progress, attemptsByPlayer, revealHistory, finished, submitGuess } =
+  const { connected, config, players, progress, attemptsByPlayer, revealHistory, finished, submitGuess, restartGame } =
     useRaceGame(code, playerId, nickname);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [winnerModalDismissed, setWinnerModalDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!finished) {
+      setCountdown(null);
+      setWinnerModalDismissed(false);
+      return;
+    }
+    setCountdown(RESTART_COUNTDOWN_SECS);
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(interval);
+          if (isHost) restartGame();
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [finished]);
 
   const wordLength = config?.wordLength ?? 5;
   const myAttempts = attemptsByPlayer[playerId] ?? [];
@@ -305,6 +364,8 @@ function RaceGameRoom({
   const otherPlayers = useMemo(() => players.filter((player) => player.playerId !== playerId), [players, playerId]);
 
   const canGuess = connected && config != null && myProgress != null && !myProgress.finished && !finished;
+  const showWinnerModal = finished !== null && !winnerModalDismissed;
+  const showSummary = finished !== null && winnerModalDismissed;
 
   const guessInput = useGuessInput(wordLength, canGuess);
 
@@ -346,16 +407,21 @@ function RaceGameRoom({
         </div>
       </header>
 
-      <main id="race-main" className="app-main">
+      <main id="race-main" className="app-main app-main-with-keyboard">
         {config && myProgress && !finished && <RaceStatus config={config} progress={myProgress} />}
 
-        {finished && (
+        {showSummary && (
           <>
             <p className="banner banner-gold">
-              {finished.winnerId
-                ? `🏆 ${players.find((player) => player.playerId === finished.winnerId)?.nickname ?? 'Alguém'} venceu a corrida!`
+              {finished!.winnerId
+                ? `🏆 ${players.find((player) => player.playerId === finished!.winnerId)?.nickname ?? 'Alguém'} venceu a corrida!`
                 : '🏁 Corrida encerrada — ninguém acertou todas as palavras.'}
             </p>
+            {countdown !== null && (
+              <p className="banner banner-warning">
+                Nova partida em {countdown}…
+              </p>
+            )}
             <RaceSummary revealHistory={revealHistory} players={players} />
           </>
         )}
@@ -363,8 +429,8 @@ function RaceGameRoom({
           <p className="banner banner-warning">👀 Você terminou todas as palavras — aguarde o fim da corrida.</p>
         )}
 
-        <section id="race-board-section" style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-          <div id="race-other-players">
+        <section id="race-board-section" className="game-board-section">
+          <div id="race-other-players" className="other-players-column">
             <h2>Outros jogadores</h2>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {otherPlayers.map((player) => (
@@ -373,36 +439,64 @@ function RaceGameRoom({
                   nickname={player.nickname}
                   wordLength={wordLength}
                   attempts={attemptsByPlayer[player.playerId] ?? []}
+                  totalRows={6}
                 />
               ))}
               {otherPlayers.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum outro jogador na sala ainda.</p>}
             </div>
           </div>
 
-          <div id="race-my-word">
-            <div id="race-board-panel" className="board-panel">
-              <WordGrid
-                wordLength={wordLength}
-                attempts={myAttempts}
-                activeGuess={canGuess ? guessInput.letters : undefined}
-                activeCursor={canGuess ? guessInput.cursor : undefined}
-                activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
-                onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
-              />
-              {canGuess && (
-                <Keyboard
-                  attempts={myAttempts}
-                  onLetter={guessInput.typeLetter}
-                  onEnter={handleEnter}
-                  onBackspace={guessInput.backspace}
-                />
-              )}
-            </div>
+          <div id="race-my-word" className="my-word-column">
+            <WordGrid
+              wordLength={wordLength}
+              attempts={myAttempts}
+              activeGuess={canGuess ? guessInput.letters : undefined}
+              activeCursor={canGuess ? guessInput.cursor : undefined}
+              activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
+              onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+            />
           </div>
 
           {config && <RaceLeaderboard players={players} progress={progress} wordCount={config.wordCount} ownPlayerId={playerId} />}
         </section>
       </main>
+
+      <div className="keyboard-footer">
+        <Keyboard
+          attempts={myAttempts}
+          onLetter={guessInput.typeLetter}
+          onEnter={handleEnter}
+          onBackspace={guessInput.backspace}
+          disabled={!canGuess}
+        />
+      </div>
+
+      {showWinnerModal && (
+        <WinnerModal
+          winnerName={finished!.winnerId ? (players.find((p) => p.playerId === finished!.winnerId)?.nickname ?? 'Alguém') : null}
+          onDismiss={() => setWinnerModalDismissed(true)}
+        />
+      )}
+    </div>
+  );
+}
+
+function WinnerModal({ winnerName, onDismiss }: { winnerName: string | null; onDismiss: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, 4000);
+    return () => clearTimeout(timer);
+  }, [onDismiss]);
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card">
+        <p className="modal-title">
+          {winnerName ? `🏆 ${winnerName} venceu a corrida!` : '🏁 Corrida encerrada'}
+        </p>
+        <button className="btn btn-primary" onClick={onDismiss}>
+          Ver resultados
+        </button>
+      </div>
     </div>
   );
 }

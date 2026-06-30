@@ -5,6 +5,7 @@ import { joinRoom, type JoinRoomDeps } from '../../../application/use-cases/room
 import { leaveRoom } from '../../../application/use-cases/room/leave-room.js';
 import { updateRoomSettings } from '../../../application/use-cases/room/update-room-settings.js';
 import { startGame } from '../../../application/use-cases/room/start-game.js';
+import { restartRoom, type RestartRoomDeps } from '../../../application/use-cases/room/restart-room.js';
 import { migrateHost } from '../../../application/use-cases/room/migrate-host.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import type { HostMigrationTracker } from '../../../infrastructure/realtime/host-migration-tracker.js';
@@ -12,6 +13,7 @@ import type { PlayerSessionStore } from '../../../infrastructure/realtime/player
 import {
   guessPayloadSchema,
   joinPayloadSchema,
+  restartPayloadSchema,
   roomMembershipPayloadSchema,
   updateSettingsPayloadSchema,
 } from '../dto/guess-payload.js';
@@ -23,6 +25,7 @@ export function registerRaceModeHandlers(
   joinRoomDeps: JoinRoomDeps,
   hostMigrationTracker: HostMigrationTracker,
   sessionStore: PlayerSessionStore,
+  restartRoomDeps: RestartRoomDeps,
 ): void {
   registry.on('register', (code: string, gameMode: RaceMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
 
@@ -141,6 +144,33 @@ export function registerRaceModeHandlers(
       try {
         const record = await startGame(joinRoomDeps, parsed.data);
         io.to(parsed.data.code).emit('game:start', record);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro desconhecido';
+        socket.emit('room:error', { message });
+      }
+    });
+
+    socket.on('room:restart', async (rawPayload: unknown) => {
+      const parsed = restartPayloadSchema.safeParse(rawPayload);
+      if (!parsed.success) {
+        socket.emit('room:error', { message: 'Payload de reinício inválido' });
+        return;
+      }
+
+      try {
+        const { gameMode } = await restartRoom(restartRoomDeps, parsed.data);
+        const raceMode = gameMode as RaceMode;
+        const room = raceMode.getRoom();
+        const game = raceMode.getGame();
+        const playerIds = Array.from(room.players.keys());
+        io.to(parsed.data.code).emit('room:state', {
+          ...raceMode.configSnapshot(),
+          players: Array.from(room.players.values()),
+          progress: game.progressSummary(),
+          attemptsByPlayer: Object.fromEntries(playerIds.map((id) => [id, []])),
+          phase: game.phase,
+          winnerId: game.winnerId,
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';
         socket.emit('room:error', { message });

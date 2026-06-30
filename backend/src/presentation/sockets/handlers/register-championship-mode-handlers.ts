@@ -5,6 +5,7 @@ import { joinRoom, type JoinRoomDeps } from '../../../application/use-cases/room
 import { leaveRoom } from '../../../application/use-cases/room/leave-room.js';
 import { updateRoomSettings } from '../../../application/use-cases/room/update-room-settings.js';
 import { startGame } from '../../../application/use-cases/room/start-game.js';
+import { restartRoom, type RestartRoomDeps } from '../../../application/use-cases/room/restart-room.js';
 import { migrateHost } from '../../../application/use-cases/room/migrate-host.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import type { HostMigrationTracker } from '../../../infrastructure/realtime/host-migration-tracker.js';
@@ -12,6 +13,7 @@ import type { PlayerSessionStore } from '../../../infrastructure/realtime/player
 import {
   guessPayloadSchema,
   joinPayloadSchema,
+  restartPayloadSchema,
   roomMembershipPayloadSchema,
   updateSettingsPayloadSchema,
 } from '../dto/guess-payload.js';
@@ -23,6 +25,7 @@ export function registerChampionshipModeHandlers(
   joinRoomDeps: JoinRoomDeps,
   hostMigrationTracker: HostMigrationTracker,
   sessionStore: PlayerSessionStore,
+  restartRoomDeps: RestartRoomDeps,
 ): void {
   registry.on('register', (code: string, gameMode: ChampionshipMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
 
@@ -140,6 +143,31 @@ export function registerChampionshipModeHandlers(
       }
     });
 
+    socket.on('room:restart', async (rawPayload: unknown) => {
+      const parsed = restartPayloadSchema.safeParse(rawPayload);
+      if (!parsed.success) {
+        socket.emit('room:error', { message: 'Payload de reinício inválido' });
+        return;
+      }
+
+      try {
+        const { gameMode } = await restartRoom(restartRoomDeps, parsed.data);
+        const champMode = gameMode as ChampionshipMode;
+        const room = champMode.getRoom();
+        const game = champMode.getGame();
+        io.to(parsed.data.code).emit('room:state', {
+          ...champMode.currentRoundSnapshot(),
+          players: Array.from(room.players.values()),
+          scores: Object.fromEntries(game.scores),
+          attempts: [],
+          solvedBy: null,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Erro desconhecido';
+        socket.emit('room:error', { message });
+      }
+    });
+
     socket.on('guess:submit', (rawPayload: unknown) => {
       const parsed = guessPayloadSchema.safeParse(rawPayload);
       if (!parsed.success) {
@@ -196,6 +224,7 @@ function bindBroadcast(
   gameMode: ChampionshipMode,
 ): void {
   gameMode.on('round:started', (snapshot) => io.to(snapshot.roomId).emit('round:started', snapshot));
+  gameMode.on('round:extra-attempts', (snapshot) => io.to(snapshot.roomId).emit('round:extra-attempts', snapshot));
   gameMode.on('word:resolved', (result) => io.to(result.roomId).emit('word:resolved', result));
   gameMode.on('tiebreak:started', (payload) => io.to(payload.roomId).emit('tiebreak:started', payload));
   gameMode.on('game:finished', (payload) => {

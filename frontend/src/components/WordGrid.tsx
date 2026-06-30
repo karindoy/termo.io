@@ -24,6 +24,8 @@ interface WordGridProps {
   activeLastEdited?: number | null;
   /** Lets the player click/tap a cell in the active row to move the cursor there. */
   onActiveCellClick?: (index: number) => void;
+  /** Pre-render at least this many rows to prevent layout shifts. */
+  totalRows?: number;
 }
 
 export function WordGrid({
@@ -33,6 +35,7 @@ export function WordGrid({
   activeCursor,
   activeLastEdited,
   onActiveCellClick,
+  totalRows,
 }: WordGridProps) {
   const [revealedCount, setRevealedCount] = useState(attempts.length);
   const previousLength = useRef(attempts.length);
@@ -47,34 +50,41 @@ export function WordGrid({
     previousLength.current = attempts.length;
   }, [attempts.length]);
 
-  const rows = activeGuess !== undefined ? [...attempts, null] : attempts;
+  // 'null' = active input row, undefined = empty pre-rendered placeholder
+  const rows: (Attempt | null | undefined)[] = [...attempts];
+  if (activeGuess !== undefined) rows.push(null);
+  const targetLength = Math.max(rows.length, totalRows ?? 0);
+  while (rows.length < targetLength) rows.push(undefined);
 
   return (
     <div className="word-grid">
-      {rows.map((attempt, rowIndex) => (
+      {rows.map((row, rowIndex) => (
         <div key={rowIndex} className="word-row">
           {Array.from({ length: wordLength }).map((_, columnIndex) => {
-            if (attempt) {
-              const letterFeedback = attempt.feedback[columnIndex];
-              const isFlipping = rowIndex >= revealedCount;
+            if (row === undefined) {
+              return <Tile key={columnIndex} letter="" />;
+            }
+            if (row === null) {
+              const letter = activeGuess?.[columnIndex] ?? '';
               return (
                 <Tile
                   key={columnIndex}
-                  letter={letterFeedback?.letter ?? ''}
-                  status={letterFeedback?.status}
-                  isFlipping={isFlipping}
-                  delay={columnIndex * 80}
+                  letter={letter}
+                  isTyping={activeLastEdited === columnIndex}
+                  isCursor={activeCursor === columnIndex}
+                  onClick={onActiveCellClick ? () => onActiveCellClick(columnIndex) : undefined}
                 />
               );
             }
-            const letter = activeGuess?.[columnIndex] ?? '';
+            const letterFeedback = row.feedback[columnIndex];
+            const isFlipping = rowIndex >= revealedCount;
             return (
               <Tile
                 key={columnIndex}
-                letter={letter}
-                isTyping={activeLastEdited === columnIndex}
-                isCursor={activeCursor === columnIndex}
-                onClick={onActiveCellClick ? () => onActiveCellClick(columnIndex) : undefined}
+                letter={letterFeedback?.letter ?? ''}
+                status={letterFeedback?.status}
+                isFlipping={isFlipping}
+                delay={columnIndex * 80}
               />
             );
           })}

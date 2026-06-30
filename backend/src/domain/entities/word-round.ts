@@ -14,12 +14,18 @@ export class WordRound {
   resolved = false;
   resolvedReason: RoundResolutionReason | null = null;
   solvedBy: string | null = null;
+  extraAttemptsGranted = false;
 
   constructor(
     readonly secretWord: Word,
-    readonly maxAttempts: number,
+    public maxAttempts: number,
     readonly timeLimitMs: number,
   ) {}
+
+  grantExtraAttempts(count: number): void {
+    this.maxAttempts += count;
+    this.extraAttemptsGranted = true;
+  }
 
   attemptsFor(playerId: string): Attempt[] {
     return this.attempts.filter((attempt) => attempt.playerId === playerId);
