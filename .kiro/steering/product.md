@@ -52,6 +52,7 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 - Nickname selection per session (no auth).
 - Round Mode and Fast Mode game logic.
 - Shared real-time board: every player's guesses, attempt count, and letter feedback (colors + positions) visible to all players in the room as they happen.
+- Flexible letter input: within the active guess row, a player can reposition the cursor with arrow keys or by clicking/tapping any cell, then insert/overwrite the letter at that position — not limited to typing strictly left-to-right from the first empty cell.
 - Scoring (Round Mode) and race-to-finish detection (Fast Mode).
 - Brazilian Portuguese word list/dictionary for secret words and valid-guess validation: fixed 5-letter length, accent-insensitive matching (base letter matches its accented counterpart), no repeat-avoidance — the same word can legitimately reappear across games/sessions.
 

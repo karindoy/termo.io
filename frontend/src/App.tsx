@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useGame } from './hooks/useGame';
 import { useFastGame } from './hooks/useFastGame';
+import { useGuessInput } from './hooks/useGuessInput';
 import { WordGrid } from './components/WordGrid';
 import { Keyboard } from './components/Keyboard';
 import { PlayerBoard } from './components/PlayerBoard';
@@ -161,7 +162,6 @@ function RoundGameRoom({
     playerId,
     nickname,
   );
-  const [currentGuess, setCurrentGuess] = useState('');
 
   const wordLength = round?.wordLength ?? 5;
   const myAttempts = useMemo(() => attempts.filter((attempt) => attempt.playerId === playerId), [attempts, playerId]);
@@ -173,19 +173,12 @@ function RoundGameRoom({
   const isAttemptsExhausted = round != null && myAttempts.length >= round.maxAttempts;
   const canGuess = !finished && round != null && !isTieBreakSpectator && !isRoundOver && !isAttemptsExhausted;
 
-  function handleLetter(letter: string): void {
-    if (!canGuess || currentGuess.length >= wordLength) return;
-    setCurrentGuess((prev) => prev + letter);
-  }
-
-  function handleBackspace(): void {
-    setCurrentGuess((prev) => prev.slice(0, -1));
-  }
+  const guessInput = useGuessInput(wordLength, canGuess);
 
   function handleEnter(): void {
-    if (!canGuess || currentGuess.length !== wordLength) return;
-    submitGuess(currentGuess);
-    setCurrentGuess('');
+    if (!canGuess || !guessInput.isComplete) return;
+    submitGuess(guessInput.guess);
+    guessInput.reset();
   }
 
   useEffect(() => {
@@ -193,9 +186,13 @@ function RoundGameRoom({
       if (event.key === 'Enter') {
         handleEnter();
       } else if (event.key === 'Backspace') {
-        handleBackspace();
+        guessInput.backspace();
+      } else if (event.key === 'ArrowLeft') {
+        guessInput.moveCursor(-1);
+      } else if (event.key === 'ArrowRight') {
+        guessInput.moveCursor(1);
       } else if (/^[a-zA-Z]$/.test(event.key)) {
-        handleLetter(event.key.toUpperCase());
+        guessInput.typeLetter(event.key.toUpperCase());
       }
     }
 
@@ -242,9 +239,21 @@ function RoundGameRoom({
         <section style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
           <div>
             <h2>Sua palavra</h2>
-            <WordGrid wordLength={wordLength} attempts={myAttempts} activeGuess={canGuess ? currentGuess : undefined} />
+            <WordGrid
+              wordLength={wordLength}
+              attempts={myAttempts}
+              activeGuess={canGuess ? guessInput.letters : undefined}
+              activeCursor={canGuess ? guessInput.cursor : undefined}
+              activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
+              onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+            />
             {canGuess && (
-              <Keyboard attempts={myAttempts} onLetter={handleLetter} onEnter={handleEnter} onBackspace={handleBackspace} />
+              <Keyboard
+                attempts={myAttempts}
+                onLetter={guessInput.typeLetter}
+                onEnter={handleEnter}
+                onBackspace={guessInput.backspace}
+              />
             )}
           </div>
 
@@ -288,7 +297,6 @@ function FastGameRoom({
 }) {
   const { connected, config, players, progress, attemptsByPlayer, reveal, finished, error, submitGuess } =
     useFastGame(code, playerId, nickname);
-  const [currentGuess, setCurrentGuess] = useState('');
 
   const wordLength = config?.wordLength ?? 5;
   const myAttempts = attemptsByPlayer[playerId] ?? [];
@@ -297,19 +305,12 @@ function FastGameRoom({
 
   const canGuess = connected && config != null && myProgress != null && !myProgress.finished && !finished;
 
-  function handleLetter(letter: string): void {
-    if (!canGuess || currentGuess.length >= wordLength) return;
-    setCurrentGuess((prev) => prev + letter);
-  }
-
-  function handleBackspace(): void {
-    setCurrentGuess((prev) => prev.slice(0, -1));
-  }
+  const guessInput = useGuessInput(wordLength, canGuess);
 
   function handleEnter(): void {
-    if (!canGuess || currentGuess.length !== wordLength) return;
-    submitGuess(currentGuess);
-    setCurrentGuess('');
+    if (!canGuess || !guessInput.isComplete) return;
+    submitGuess(guessInput.guess);
+    guessInput.reset();
   }
 
   useEffect(() => {
@@ -317,9 +318,13 @@ function FastGameRoom({
       if (event.key === 'Enter') {
         handleEnter();
       } else if (event.key === 'Backspace') {
-        handleBackspace();
+        guessInput.backspace();
+      } else if (event.key === 'ArrowLeft') {
+        guessInput.moveCursor(-1);
+      } else if (event.key === 'ArrowRight') {
+        guessInput.moveCursor(1);
       } else if (/^[a-zA-Z]$/.test(event.key)) {
-        handleLetter(event.key.toUpperCase());
+        guessInput.typeLetter(event.key.toUpperCase());
       }
     }
 
@@ -361,9 +366,21 @@ function FastGameRoom({
         <section style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
           <div>
             <h2>Sua palavra</h2>
-            <WordGrid wordLength={wordLength} attempts={myAttempts} activeGuess={canGuess ? currentGuess : undefined} />
+            <WordGrid
+              wordLength={wordLength}
+              attempts={myAttempts}
+              activeGuess={canGuess ? guessInput.letters : undefined}
+              activeCursor={canGuess ? guessInput.cursor : undefined}
+              activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
+              onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+            />
             {canGuess && (
-              <Keyboard attempts={myAttempts} onLetter={handleLetter} onEnter={handleEnter} onBackspace={handleBackspace} />
+              <Keyboard
+                attempts={myAttempts}
+                onLetter={guessInput.typeLetter}
+                onEnter={handleEnter}
+                onBackspace={guessInput.backspace}
+              />
             )}
           </div>
 

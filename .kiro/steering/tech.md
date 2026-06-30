@@ -37,6 +37,7 @@ inclusion: always
 
 - **Framework**: React + TypeScript (Vite).
 - **Board UI**: grid components per player (own board prominent, other players' boards visible — compact view showing attempt count/colors per position). State is server-authoritative: the client renders feedback the server sends, it does not compute green/yellow locally beyond optimistic UI if needed.
+- **Word input (cursor-based, not append-only)**: the active row tracks a cursor position rather than always appending to the first empty cell. Arrow-key navigation (←/→) and mouse/tap clicks on any cell in the row move the cursor; typing a letter inserts/overwrites at that cursor position. Letter correctness/color logic in `domain` is unaffected — this is purely client-side editing UX over the 5-letter guess before submission.
 - **Styling**: Tailwind CSS or CSS Modules — pick one, don't mix.
 
 ## Architecture Pattern

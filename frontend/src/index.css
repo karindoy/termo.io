@@ -296,6 +296,15 @@ label.field {
   border-color: var(--tile-border-filled);
 }
 
+.tile-clickable {
+  cursor: pointer;
+}
+
+.tile-cursor {
+  border-color: var(--color-info);
+  box-shadow: 0 0 0 1px var(--color-info);
+}
+
 .tile-correct {
   background: var(--color-correct);
   border-color: var(--color-correct);

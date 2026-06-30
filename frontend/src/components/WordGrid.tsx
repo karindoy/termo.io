@@ -16,10 +16,24 @@ const STATUS_COLOR: Record<LetterStatus, string> = {
 interface WordGridProps {
   wordLength: number;
   attempts: Attempt[];
-  activeGuess?: string;
+  /** Fixed-length array, one entry per cell ('' = empty), for the in-progress row. */
+  activeGuess?: string[];
+  /** Index of the cell the player is currently editing, within the active row. */
+  activeCursor?: number;
+  /** Index of the cell most recently written/cleared, for the "just typed" pop animation. */
+  activeLastEdited?: number | null;
+  /** Lets the player click/tap a cell in the active row to move the cursor there. */
+  onActiveCellClick?: (index: number) => void;
 }
 
-export function WordGrid({ wordLength, attempts, activeGuess }: WordGridProps) {
+export function WordGrid({
+  wordLength,
+  attempts,
+  activeGuess,
+  activeCursor,
+  activeLastEdited,
+  onActiveCellClick,
+}: WordGridProps) {
   const [revealedCount, setRevealedCount] = useState(attempts.length);
   const previousLength = useRef(attempts.length);
 
@@ -54,8 +68,15 @@ export function WordGrid({ wordLength, attempts, activeGuess }: WordGridProps) {
               );
             }
             const letter = activeGuess?.[columnIndex] ?? '';
-            const isLastTyped = letter !== '' && columnIndex === (activeGuess?.length ?? 0) - 1;
-            return <Tile key={columnIndex} letter={letter} isTyping={isLastTyped} />;
+            return (
+              <Tile
+                key={columnIndex}
+                letter={letter}
+                isTyping={activeLastEdited === columnIndex}
+                isCursor={activeCursor === columnIndex}
+                onClick={onActiveCellClick ? () => onActiveCellClick(columnIndex) : undefined}
+              />
+            );
           })}
         </div>
       ))}
@@ -68,19 +89,25 @@ function Tile({
   status,
   isFlipping,
   isTyping,
+  isCursor,
   delay,
+  onClick,
 }: {
   letter: string;
   status?: LetterStatus;
   isFlipping?: boolean;
   isTyping?: boolean;
+  isCursor?: boolean;
   delay?: number;
+  onClick?: () => void;
 }) {
   const classNames = ['tile'];
   if (letter && !isFlipping) classNames.push('tile-filled');
   if (status && !isFlipping) classNames.push(STATUS_CLASS[status]);
   if (isFlipping) classNames.push('tile-flip');
   if (isTyping) classNames.push('tile-pop');
+  if (isCursor) classNames.push('tile-cursor');
+  if (onClick) classNames.push('tile-clickable');
 
   return (
     <div
@@ -90,6 +117,8 @@ function Tile({
           ? ({ animationDelay: `${delay}ms`, '--tile-color': STATUS_COLOR[status] } as React.CSSProperties)
           : undefined
       }
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
     >
       {letter}
     </div>
