@@ -37,6 +37,7 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 - 5 words per game.
 - **Infinite attempts** per word (no 6-attempt cap).
 - The **first player to correctly guess all words wins the game** — it's a race, not a per-word point system.
+- **Minimal in-game UI by design**: unlike Championship Mode, Race Mode hides the attempts counter and any mid-race banner for a correct guess/timeout/invalid word — nothing about word state is revealed while the race is live. The on-screen keyboard is shared with Championship Mode (both support physical-keyboard typing, on-screen key clicks, and mouse/arrow-key cell selection). All resolved words (own and other players') are only shown together in a single end-of-race summary, once the race itself has finished.
 
 ## Rooms
 

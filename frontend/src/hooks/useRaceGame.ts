@@ -14,8 +14,6 @@ import type {
   RoomSessionPayload,
 } from '../lib/types';
 
-const REVEAL_DISPLAY_MS = 4000;
-
 export interface RaceRevealInfo {
   playerId: string;
   revealedWord: string;
@@ -25,7 +23,6 @@ export interface RaceRevealInfo {
 
 export function useRaceGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
-  const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wordIndexRef = useRef<Record<string, number>>({});
   const sessionSecretRef = useRef<string | null>(null);
 
@@ -34,16 +31,8 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [progress, setProgress] = useState<Record<string, PlayerProgressSnapshot>>({});
   const [attemptsByPlayer, setAttemptsByPlayer] = useState<Record<string, Attempt[]>>({});
-  const [reveal, setReveal] = useState<RaceRevealInfo | null>(null);
+  const [revealHistory, setRevealHistory] = useState<RaceRevealInfo[]>([]);
   const [finished, setFinished] = useState<RaceFinishedPayload | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  function clearRevealTimeout(): void {
-    if (revealTimeoutRef.current) {
-      clearTimeout(revealTimeoutRef.current);
-      revealTimeoutRef.current = null;
-    }
-  }
 
   function setProgressEntry(entry: PlayerProgressSnapshot): void {
     wordIndexRef.current[entry.playerId] = entry.wordIndex;
@@ -72,9 +61,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
       setProgress(Object.fromEntries(state.progress.map((entry) => [entry.playerId, entry])));
       wordIndexRef.current = Object.fromEntries(state.progress.map((entry) => [entry.playerId, entry.wordIndex]));
       setFinished(state.phase === 'finished' ? { winnerId: state.winnerId } : null);
-      setReveal(null);
-      clearRevealTimeout();
-      setError(null);
+      setRevealHistory([]);
     });
 
     socket.on('room:players', (incomingPlayers: Player[]) => setPlayers(incomingPlayers));
@@ -93,20 +80,20 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
           [result.playerId]: { ...current, finished: result.playerFinished, won: result.playerWon },
         };
       });
-      setReveal({
-        playerId: result.playerId,
-        revealedWord: result.revealedWord,
-        reason: result.reason,
-        playerWon: result.playerWon,
-      });
-      clearRevealTimeout();
-      revealTimeoutRef.current = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
+      setRevealHistory((prev) => [
+        ...prev,
+        {
+          playerId: result.playerId,
+          revealedWord: result.revealedWord,
+          reason: result.reason,
+          playerWon: result.playerWon,
+        },
+      ]);
     });
 
     socket.on('race:finished', (payload: RaceFinishedPayload) => setFinished(payload));
 
     socket.on('guess:result', (result: RaceGuessResult) => {
-      setError(null);
       if (result.wordIndex !== wordIndexRef.current[result.attempt.playerId]) return;
       setAttemptsByPlayer((prev) => ({
         ...prev,
@@ -114,11 +101,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
       }));
     });
 
-    socket.on('guess:error', (payload: { message: string }) => setError(payload.message));
-    socket.on('room:error', (payload: { message: string }) => setError(payload.message));
-
     return () => {
-      clearRevealTimeout();
       socket.disconnect();
     };
   }, [code, playerId, nickname]);
@@ -133,9 +116,8 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     players,
     progress,
     attemptsByPlayer,
-    reveal,
+    revealHistory,
     finished,
-    error,
     submitGuess,
   };
 }

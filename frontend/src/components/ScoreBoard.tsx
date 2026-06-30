@@ -11,7 +11,7 @@ export function ScoreBoard({ players, scores, tieBreakCandidates, ownPlayerId }:
   const ranked = [...players].sort((a, b) => (scores[b.playerId] ?? 0) - (scores[a.playerId] ?? 0));
 
   return (
-    <div className="card" style={{ minWidth: 200 }}>
+    <div id="placar" className="card" style={{ minWidth: 200 }}>
       <h2>Placar</h2>
       {ranked.map((player) => {
         const isTieBreakCandidate = tieBreakCandidates?.includes(player.playerId) ?? false;

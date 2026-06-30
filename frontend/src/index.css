@@ -183,6 +183,27 @@ label.field {
   font-size: 0.8rem;
 }
 
+/* Board panel (grid + keyboard) */
+
+.status-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.board-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.board-panel .keyboard {
+  width: 100%;
+  margin-top: 0;
+}
+
 /* Status / banners */
 
 .status-pill {
@@ -269,6 +290,7 @@ label.field {
 .word-grid {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 5px;
 }
 

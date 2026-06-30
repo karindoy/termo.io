@@ -10,7 +10,7 @@ import { RoundStatus } from './components/RoundStatus';
 import { WordRevealBanner } from './components/WordRevealBanner';
 import { RaceStatus } from './components/RaceStatus';
 import { RaceLeaderboard } from './components/RaceLeaderboard';
-import { RaceRevealBanner } from './components/RaceRevealBanner';
+import { RaceSummary } from './components/RaceSummary';
 import { Lobby } from './components/Lobby';
 import { PublicRoomBrowser } from './components/PublicRoomBrowser';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
@@ -48,9 +48,9 @@ function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
   const [value, setValue] = useState('');
 
   return (
-    <div className="centered-shell">
+    <div id="nickname-form" className="centered-shell">
       <h1>termo.io</h1>
-      <div className="card">
+      <div id="nickname-card" className="card">
         <input
           className="input"
           value={value}
@@ -107,10 +107,10 @@ function RoomChoiceScreen({
   }
 
   return (
-    <div className="centered-shell" style={{ maxWidth: 420 }}>
+    <div id="room-choice-screen" className="centered-shell" style={{ maxWidth: 420 }}>
       <h1>termo.io</h1>
 
-      <section className="card">
+      <section id="create-room-section" className="card">
         <h2>Criar uma sala</h2>
         <select className="input" value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
           <option value="championship">Campeonato</option>
@@ -125,7 +125,7 @@ function RoomChoiceScreen({
         </button>
       </section>
 
-      <section className="card">
+      <section id="join-room-section" className="card">
         <h2>Entrar com código</h2>
         <input
           className="input"
@@ -201,10 +201,10 @@ function ChampionshipGameRoom({
   });
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <div id="championship-room" className="app-shell">
+      <header id="championship-header" className="app-header">
         <h1>termo.io — Campeonato</h1>
-        <div className="status-pill">
+        <div id="championship-status-pill" className="status-pill">
           <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
           <button className="btn btn-ghost btn-sm" onClick={onBack}>
@@ -213,7 +213,7 @@ function ChampionshipGameRoom({
         </div>
       </header>
 
-      <main className="app-main">
+      <main id="championship-main" className="app-main">
         {round && !finished && <RoundStatus round={round} myAttemptsCount={myAttempts.length} />}
 
         {finished && (
@@ -236,28 +236,8 @@ function ChampionshipGameRoom({
         )}
         {error && <p className="banner banner-error">{error}</p>}
 
-        <section style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-          <div>
-            <h2>Sua palavra</h2>
-            <WordGrid
-              wordLength={wordLength}
-              attempts={myAttempts}
-              activeGuess={canGuess ? guessInput.letters : undefined}
-              activeCursor={canGuess ? guessInput.cursor : undefined}
-              activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
-              onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
-            />
-            {canGuess && (
-              <Keyboard
-                attempts={myAttempts}
-                onLetter={guessInput.typeLetter}
-                onEnter={handleEnter}
-                onBackspace={guessInput.backspace}
-              />
-            )}
-          </div>
-
-          <div>
+        <section id="championship-board-section" style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+          <div id="championship-other-players">
             <h2>Outros jogadores</h2>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {otherPlayers.map((player) => (
@@ -269,6 +249,27 @@ function ChampionshipGameRoom({
                 />
               ))}
               {otherPlayers.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum outro jogador na sala ainda.</p>}
+            </div>
+          </div>
+
+          <div id="championship-my-word">
+            <div id="championship-board-panel" className="board-panel">
+              <WordGrid
+                wordLength={wordLength}
+                attempts={myAttempts}
+                activeGuess={canGuess ? guessInput.letters : undefined}
+                activeCursor={canGuess ? guessInput.cursor : undefined}
+                activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
+                onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+              />
+              {canGuess && (
+                <Keyboard
+                  attempts={myAttempts}
+                  onLetter={guessInput.typeLetter}
+                  onEnter={handleEnter}
+                  onBackspace={guessInput.backspace}
+                />
+              )}
             </div>
           </div>
 
@@ -295,7 +296,7 @@ function RaceGameRoom({
   nickname: string;
   onBack: () => void;
 }) {
-  const { connected, config, players, progress, attemptsByPlayer, reveal, finished, error, submitGuess } =
+  const { connected, config, players, progress, attemptsByPlayer, revealHistory, finished, submitGuess } =
     useRaceGame(code, playerId, nickname);
 
   const wordLength = config?.wordLength ?? 5;
@@ -333,10 +334,10 @@ function RaceGameRoom({
   });
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <div id="race-room" className="app-shell">
+      <header id="race-header" className="app-header">
         <h1>termo.io — Corrida</h1>
-        <div className="status-pill">
+        <div id="race-status-pill" className="status-pill">
           <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
           <button className="btn btn-ghost btn-sm" onClick={onBack}>
@@ -345,46 +346,25 @@ function RaceGameRoom({
         </div>
       </header>
 
-      <main className="app-main">
-        {config && myProgress && !finished && (
-          <RaceStatus config={config} progress={myProgress} myAttemptsCount={myAttempts.length} />
-        )}
+      <main id="race-main" className="app-main">
+        {config && myProgress && !finished && <RaceStatus config={config} progress={myProgress} />}
 
         {finished && (
-          <p className="banner banner-gold">
-            {finished.winnerId
-              ? `🏆 ${players.find((player) => player.playerId === finished.winnerId)?.nickname ?? 'Alguém'} venceu a corrida!`
-              : '🏁 Corrida encerrada — ninguém acertou todas as palavras.'}
-          </p>
+          <>
+            <p className="banner banner-gold">
+              {finished.winnerId
+                ? `🏆 ${players.find((player) => player.playerId === finished.winnerId)?.nickname ?? 'Alguém'} venceu a corrida!`
+                : '🏁 Corrida encerrada — ninguém acertou todas as palavras.'}
+            </p>
+            <RaceSummary revealHistory={revealHistory} players={players} />
+          </>
         )}
-        {reveal && <RaceRevealBanner reveal={reveal} players={players} />}
         {myProgress?.finished && !finished && (
           <p className="banner banner-warning">👀 Você terminou todas as palavras — aguarde o fim da corrida.</p>
         )}
-        {error && <p className="banner banner-error">{error}</p>}
 
-        <section style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-          <div>
-            <h2>Sua palavra</h2>
-            <WordGrid
-              wordLength={wordLength}
-              attempts={myAttempts}
-              activeGuess={canGuess ? guessInput.letters : undefined}
-              activeCursor={canGuess ? guessInput.cursor : undefined}
-              activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
-              onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
-            />
-            {canGuess && (
-              <Keyboard
-                attempts={myAttempts}
-                onLetter={guessInput.typeLetter}
-                onEnter={handleEnter}
-                onBackspace={guessInput.backspace}
-              />
-            )}
-          </div>
-
-          <div>
+        <section id="race-board-section" style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+          <div id="race-other-players">
             <h2>Outros jogadores</h2>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
               {otherPlayers.map((player) => (
@@ -396,6 +376,27 @@ function RaceGameRoom({
                 />
               ))}
               {otherPlayers.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum outro jogador na sala ainda.</p>}
+            </div>
+          </div>
+
+          <div id="race-my-word">
+            <div id="race-board-panel" className="board-panel">
+              <WordGrid
+                wordLength={wordLength}
+                attempts={myAttempts}
+                activeGuess={canGuess ? guessInput.letters : undefined}
+                activeCursor={canGuess ? guessInput.cursor : undefined}
+                activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
+                onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+              />
+              {canGuess && (
+                <Keyboard
+                  attempts={myAttempts}
+                  onLetter={guessInput.typeLetter}
+                  onEnter={handleEnter}
+                  onBackspace={guessInput.backspace}
+                />
+              )}
             </div>
           </div>
 

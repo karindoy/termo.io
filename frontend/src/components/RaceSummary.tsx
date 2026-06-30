@@ -1,22 +1,29 @@
 import type { Player } from '../lib/types';
 import type { RaceRevealInfo } from '../hooks/useRaceGame';
 
-interface RaceRevealBannerProps {
-  reveal: RaceRevealInfo;
+interface RaceSummaryProps {
+  revealHistory: RaceRevealInfo[];
   players: Player[];
 }
 
-export function RaceRevealBanner({ reveal, players }: RaceRevealBannerProps) {
-  const nickname = players.find((player) => player.playerId === reveal.playerId)?.nickname ?? 'Alguém';
-
-  let message: string;
-  if (reveal.reason === 'solved') {
-    message = reveal.playerWon
-      ? `🏆 ${nickname} acertou todas as palavras e venceu a corrida! Última palavra: ${reveal.revealedWord}`
-      : `🎉 ${nickname} acertou: ${reveal.revealedWord}`;
-  } else {
-    message = `⏰ Tempo esgotado para ${nickname}! A palavra era: ${reveal.revealedWord}`;
-  }
-
-  return <p className="banner banner-info">{message}</p>;
+export function RaceSummary({ revealHistory, players }: RaceSummaryProps) {
+  return (
+    <div className="card">
+      <h2>Palavras da corrida</h2>
+      <ul className="row-list">
+        {revealHistory.map((reveal, index) => {
+          const nickname = players.find((player) => player.playerId === reveal.playerId)?.nickname ?? 'Alguém';
+          const message =
+            reveal.reason === 'solved'
+              ? `🎉 ${nickname} acertou: ${reveal.revealedWord}`
+              : `⏰ Tempo esgotado para ${nickname}: ${reveal.revealedWord}`;
+          return (
+            <li key={index} className="row-item">
+              <span>{message}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }

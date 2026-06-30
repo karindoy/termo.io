@@ -13,7 +13,7 @@ export function RaceLeaderboard({ players, progress, wordCount, ownPlayerId }: R
   );
 
   return (
-    <div className="card" style={{ minWidth: 220 }}>
+    <div id="placar" className="card" style={{ minWidth: 220 }}>
       <h2>Corrida</h2>
       {ranked.map((player) => {
         const entry = progress[player.playerId];
