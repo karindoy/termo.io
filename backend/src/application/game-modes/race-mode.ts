@@ -2,13 +2,13 @@ import { EventEmitter } from 'node:events';
 import type { GameMode } from './game-mode.js';
 import type { Attempt } from '../../domain/entities/attempt.js';
 import { Room } from '../../domain/entities/room.js';
-import { FastGame, type FastGameOptions } from '../../domain/entities/fast-game.js';
-import type { FastResolutionReason } from '../../domain/entities/fast-game.js';
+import { RaceGame, type RaceGameOptions } from '../../domain/entities/race-game.js';
+import type { RaceResolutionReason } from '../../domain/entities/race-game.js';
 import type { WordRepository } from '../../domain/repositories/word-repository.js';
 import { InvalidGuessError } from '../../domain/errors/invalid-guess-error.js';
 import { WORD_LENGTH } from '../../domain/entities/word.js';
 
-const DEFAULT_OPTIONS: FastGameOptions = {
+const DEFAULT_OPTIONS: RaceGameOptions = {
   wordCount: 5,
   timeLimitMs: 5 * 60 * 1000,
 };
@@ -28,16 +28,16 @@ export interface PlayerRoundSnapshot {
   finished: boolean;
 }
 
-export class FastMode extends EventEmitter implements GameMode {
+export class RaceMode extends EventEmitter implements GameMode {
   private room: Room | null = null;
-  private game: FastGame | null = null;
+  private game: RaceGame | null = null;
   private readonly timeouts = new Map<string, NodeJS.Timeout>();
-  private options: FastGameOptions;
+  private options: RaceGameOptions;
 
   constructor(
     private readonly roomId: string,
     private readonly wordRepository: WordRepository,
-    options: Partial<FastGameOptions> = {},
+    options: Partial<RaceGameOptions> = {},
   ) {
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -45,7 +45,7 @@ export class FastMode extends EventEmitter implements GameMode {
 
   start(): void {
     this.room = this.room ?? new Room(this.roomId);
-    this.game = new FastGame(this.wordRepository, this.options);
+    this.game = new RaceGame(this.wordRepository, this.options);
     this.emit('race:started', this.configSnapshot());
     // Players who joined during the lobby phase predate this.game — register them now.
     for (const player of this.room.players.values()) {
@@ -53,7 +53,7 @@ export class FastMode extends EventEmitter implements GameMode {
     }
   }
 
-  updateOptions(options: Partial<FastGameOptions>): void {
+  updateOptions(options: Partial<RaceGameOptions>): void {
     this.options = { ...this.options, ...options };
   }
 
@@ -93,7 +93,7 @@ export class FastMode extends EventEmitter implements GameMode {
     return this.requireRoom();
   }
 
-  getGame(): FastGame {
+  getGame(): RaceGame {
     return this.requireGame();
   }
 
@@ -132,7 +132,7 @@ export class FastMode extends EventEmitter implements GameMode {
     }
   }
 
-  private resolvePlayerWord(playerId: string, reason: FastResolutionReason): void {
+  private resolvePlayerWord(playerId: string, reason: RaceResolutionReason): void {
     this.clearPlayerTimeout(playerId);
     const game = this.requireGame();
     const result = game.resolvePlayerWord(playerId, reason);
@@ -179,7 +179,7 @@ export class FastMode extends EventEmitter implements GameMode {
     return this.room;
   }
 
-  private requireGame(): FastGame {
+  private requireGame(): RaceGame {
     if (!this.game) {
       throw new Error('Game has not started yet');
     }

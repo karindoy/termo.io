@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FastGame, type FastGameOptions } from './fast-game.js';
+import { RaceGame, type RaceGameOptions } from './race-game.js';
 import { Word } from './word.js';
 import type { WordRepository } from '../repositories/word-repository.js';
 import { GameAlreadyFinishedError } from '../errors/game-already-finished-error.js';
@@ -20,15 +20,15 @@ class FixedWordRepository implements WordRepository {
   }
 }
 
-const baseOptions: FastGameOptions = {
+const baseOptions: RaceGameOptions = {
   wordCount: 2,
   timeLimitMs: 60_000,
 };
 
-describe('FastGame', () => {
+describe('RaceGame', () => {
   it('gives each player their own independent current word', () => {
     const repository = new FixedWordRepository(['TERMO', 'PONTE']);
-    const game = new FastGame(repository, baseOptions);
+    const game = new RaceGame(repository, baseOptions);
     game.addPlayer('p1');
     game.addPlayer('p2');
 
@@ -41,7 +41,7 @@ describe('FastGame', () => {
 
   it('advances only the solving player to the next word, leaving others on the current one', () => {
     const repository = new FixedWordRepository(['TERMO', 'PONTE']);
-    const game = new FastGame(repository, baseOptions);
+    const game = new RaceGame(repository, baseOptions);
     game.addPlayer('p1');
     game.addPlayer('p2');
     game.submitGuess('p1', 'Ana', 'TERMO');
@@ -56,7 +56,7 @@ describe('FastGame', () => {
 
   it('allows an unlimited number of attempts per word', () => {
     const repository = new FixedWordRepository(['TERMO']);
-    const game = new FastGame(repository, { ...baseOptions, wordCount: 1 });
+    const game = new RaceGame(repository, { ...baseOptions, wordCount: 1 });
     game.addPlayer('p1');
 
     for (let i = 0; i < 20; i += 1) {
@@ -66,7 +66,7 @@ describe('FastGame', () => {
 
   it('declares a player the winner only once they have correctly solved every word', () => {
     const repository = new FixedWordRepository(['TERMO', 'PONTE']);
-    const game = new FastGame(repository, baseOptions);
+    const game = new RaceGame(repository, baseOptions);
     game.addPlayer('p1');
 
     game.submitGuess('p1', 'Ana', 'TERMO');
@@ -85,7 +85,7 @@ describe('FastGame', () => {
 
   it('disqualifies a player from winning once any of their words times out, even if they finish all 5', () => {
     const repository = new FixedWordRepository(['TERMO', 'PONTE']);
-    const game = new FastGame(repository, baseOptions);
+    const game = new RaceGame(repository, baseOptions);
     game.addPlayer('p1');
 
     const first = game.resolvePlayerWord('p1', 'timeout');
@@ -100,7 +100,7 @@ describe('FastGame', () => {
 
   it('finishes the game with no winner once every player has finished without anyone solving all words', () => {
     const repository = new FixedWordRepository(['TERMO', 'PONTE']);
-    const game = new FastGame(repository, baseOptions);
+    const game = new RaceGame(repository, baseOptions);
     game.addPlayer('p1');
     game.addPlayer('p2');
 
@@ -118,7 +118,7 @@ describe('FastGame', () => {
 
   it('rejects further guesses once the game has been won by another player', () => {
     const repository = new FixedWordRepository(['TERMO', 'PONTE']);
-    const game = new FastGame(repository, { ...baseOptions, wordCount: 1 });
+    const game = new RaceGame(repository, { ...baseOptions, wordCount: 1 });
     game.addPlayer('p1');
     game.addPlayer('p2');
 

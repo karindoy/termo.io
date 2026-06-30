@@ -1,12 +1,12 @@
 import type { Player } from '../lib/types';
-import type { FastRevealInfo } from '../hooks/useFastGame';
+import type { RaceRevealInfo } from '../hooks/useRaceGame';
 
-interface FastRevealBannerProps {
-  reveal: FastRevealInfo;
+interface RaceRevealBannerProps {
+  reveal: RaceRevealInfo;
   players: Player[];
 }
 
-export function FastRevealBanner({ reveal, players }: FastRevealBannerProps) {
+export function RaceRevealBanner({ reveal, players }: RaceRevealBannerProps) {
   const nickname = players.find((player) => player.playerId === reveal.playerId)?.nickname ?? 'Alguém';
 
   let message: string;

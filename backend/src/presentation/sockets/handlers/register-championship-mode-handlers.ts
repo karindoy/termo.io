@@ -1,5 +1,5 @@
 import type { Namespace, Socket } from 'socket.io';
-import type { RoundMode } from '../../../application/game-modes/round-mode.js';
+import type { ChampionshipMode } from '../../../application/game-modes/championship-mode.js';
 import { submitGuess } from '../../../application/use-cases/submit-guess.js';
 import { joinRoom, type JoinRoomDeps } from '../../../application/use-cases/room/join-room.js';
 import { leaveRoom } from '../../../application/use-cases/room/leave-room.js';
@@ -17,14 +17,14 @@ import {
 } from '../dto/guess-payload.js';
 import { redactAttempt, redactAttemptsForViewer } from '../dto/redact-attempt.js';
 
-export function registerRoundModeHandlers(
+export function registerChampionshipModeHandlers(
   io: Namespace,
-  registry: GameModeRegistry<RoundMode>,
+  registry: GameModeRegistry<ChampionshipMode>,
   joinRoomDeps: JoinRoomDeps,
   hostMigrationTracker: HostMigrationTracker,
   sessionStore: PlayerSessionStore,
 ): void {
-  registry.on('register', (code: string, gameMode: RoundMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
+  registry.on('register', (code: string, gameMode: ChampionshipMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
@@ -53,7 +53,7 @@ export function registerRoundModeHandlers(
       }
 
       const { record } = result;
-      const gameMode = result.gameMode as RoundMode;
+      const gameMode = result.gameMode as ChampionshipMode;
 
       socket.join(parsed.data.code);
       joinedCode = parsed.data.code;
@@ -190,10 +190,10 @@ export function registerRoundModeHandlers(
 
 function bindBroadcast(
   io: Namespace,
-  registry: GameModeRegistry<RoundMode>,
+  registry: GameModeRegistry<ChampionshipMode>,
   sessionStore: PlayerSessionStore,
   code: string,
-  gameMode: RoundMode,
+  gameMode: ChampionshipMode,
 ): void {
   gameMode.on('round:started', (snapshot) => io.to(snapshot.roomId).emit('round:started', snapshot));
   gameMode.on('word:resolved', (result) => io.to(result.roomId).emit('word:resolved', result));

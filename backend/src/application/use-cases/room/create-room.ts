@@ -1,8 +1,8 @@
 import { generateRoomCode } from '../../../domain/value-objects/room-code.js';
 import type { RoomMode, RoomRecord, RoomRepository } from '../../../domain/repositories/room-repository.js';
 import type { WordRepository } from '../../../domain/repositories/word-repository.js';
-import { RoundMode } from '../../game-modes/round-mode.js';
-import { FastMode } from '../../game-modes/fast-mode.js';
+import { ChampionshipMode } from '../../game-modes/championship-mode.js';
+import { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import { createRoomSettings, type RoomSettings } from '../../../domain/value-objects/room-settings.js';
 
@@ -11,8 +11,8 @@ const CODE_GENERATION_ATTEMPTS = 5;
 export interface CreateRoomDeps {
   roomRepository: RoomRepository;
   wordRepository: WordRepository;
-  roundRegistry: GameModeRegistry<RoundMode>;
-  fastRegistry: GameModeRegistry<FastMode>;
+  championshipRegistry: GameModeRegistry<ChampionshipMode>;
+  raceRegistry: GameModeRegistry<RaceMode>;
 }
 
 export interface CreateRoomInput {
@@ -29,21 +29,21 @@ export async function createRoom(deps: CreateRoomDeps, input: CreateRoomInput): 
 
   // The game only starts once the host calls start-game; here we just stand up
   // the room shell so players can join the lobby and see each other.
-  if (input.mode === 'round') {
-    const gameMode = new RoundMode(code, deps.wordRepository, {
+  if (input.mode === 'championship') {
+    const gameMode = new ChampionshipMode(code, deps.wordRepository, {
       wordCount: settings.wordCount,
       maxAttempts: settings.maxAttempts,
       timeLimitMs: settings.timeLimitMs,
     });
     gameMode.joinPlayer(input.hostId, input.nickname);
-    deps.roundRegistry.register(code, gameMode);
+    deps.championshipRegistry.register(code, gameMode);
   } else {
-    const gameMode = new FastMode(code, deps.wordRepository, {
+    const gameMode = new RaceMode(code, deps.wordRepository, {
       wordCount: settings.wordCount,
       timeLimitMs: settings.timeLimitMs,
     });
     gameMode.joinPlayer(input.hostId, input.nickname);
-    deps.fastRegistry.register(code, gameMode);
+    deps.raceRegistry.register(code, gameMode);
   }
 
   const record: RoomRecord = {

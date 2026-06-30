@@ -29,7 +29,7 @@ export interface RoundSnapshot {
   tieBreakCandidates: string[] | null;
 }
 
-export class RoundMode extends EventEmitter implements GameMode {
+export class ChampionshipMode extends EventEmitter implements GameMode {
   private room: Room | null = null;
   private game: Game | null = null;
   private timeoutHandle: NodeJS.Timeout | null = null;

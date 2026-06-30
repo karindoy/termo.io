@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { RoundMode } from './round-mode.js';
+import { ChampionshipMode } from './championship-mode.js';
 import { Word } from '../../domain/entities/word.js';
 import type { WordRepository } from '../../domain/repositories/word-repository.js';
 import { RoundAlreadyResolvedError } from '../../domain/errors/round-already-resolved-error.js';
@@ -20,9 +20,9 @@ class FixedWordRepository implements WordRepository {
   }
 }
 
-function createRoundMode(words: string[], wordCount = 2) {
+function createChampionshipMode(words: string[], wordCount = 2) {
   const repository = new FixedWordRepository(words);
-  const gameMode = new RoundMode('room-1', repository, {
+  const gameMode = new ChampionshipMode('room-1', repository, {
     wordCount,
     maxAttempts: 6,
     timeLimitMs: 60_000,
@@ -32,9 +32,9 @@ function createRoundMode(words: string[], wordCount = 2) {
   return gameMode;
 }
 
-describe('RoundMode', () => {
+describe('ChampionshipMode', () => {
   it('emits round:started on start()', () => {
-    const gameMode = createRoundMode(['TERMO', 'PONTE']);
+    const gameMode = createChampionshipMode(['TERMO', 'PONTE']);
     const onRoundStarted = vi.fn();
     gameMode.on('round:started', onRoundStarted);
 
@@ -44,7 +44,7 @@ describe('RoundMode', () => {
   });
 
   it('emits word:resolved then round:started when a guess solves the current word', () => {
-    const gameMode = createRoundMode(['TERMO', 'PONTE']);
+    const gameMode = createChampionshipMode(['TERMO', 'PONTE']);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
 
@@ -60,7 +60,7 @@ describe('RoundMode', () => {
   });
 
   it('emits game:finished after the last word once a single leader exists', () => {
-    const gameMode = createRoundMode(['TERMO'], 1);
+    const gameMode = createChampionshipMode(['TERMO'], 1);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
 
@@ -75,7 +75,7 @@ describe('RoundMode', () => {
   });
 
   it('mid-game: a "simultaneous" guess for an already-resolved word lands on the new word instead of double-scoring the old one', () => {
-    const gameMode = createRoundMode(['TERMO', 'PONTE']);
+    const gameMode = createChampionshipMode(['TERMO', 'PONTE']);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
     gameMode.joinPlayer('p2', 'Bia');
@@ -95,7 +95,7 @@ describe('RoundMode', () => {
   it('resolves the word as a timeout once the per-word timer elapses with nobody solving it', () => {
     vi.useFakeTimers();
     try {
-      const gameMode = createRoundMode(['TERMO', 'PONTE']);
+      const gameMode = createChampionshipMode(['TERMO', 'PONTE']);
       gameMode.start();
       gameMode.joinPlayer('p1', 'Ana');
 
@@ -122,7 +122,7 @@ describe('RoundMode', () => {
   });
 
   it('once the game is decided, a further guess for the same word is rejected instead of altering the outcome', () => {
-    const gameMode = createRoundMode(['TERMO'], 1);
+    const gameMode = createChampionshipMode(['TERMO'], 1);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
     gameMode.joinPlayer('p2', 'Bia');

@@ -1,4 +1,4 @@
-export type RoomMode = 'round' | 'fast';
+export type RoomMode = 'championship' | 'race';
 export type RoomStatus = 'lobby' | 'in-progress' | 'finished';
 
 export interface RoomPlayer {
@@ -118,7 +118,7 @@ export interface GameFinishedPayload {
   scores: Record<string, number>;
 }
 
-export type FastResolutionReason = 'solved' | 'timeout';
+export type RaceResolutionReason = 'solved' | 'timeout';
 
 export interface RaceConfigSnapshot {
   wordCount: number;
@@ -152,7 +152,7 @@ export interface RaceRoomState extends RaceConfigSnapshot {
 export interface PlayerWordResolvedPayload {
   playerId: string;
   wordIndex: number;
-  reason: FastResolutionReason;
+  reason: RaceResolutionReason;
   revealedWord: string;
   hasNextWord: boolean;
   playerFinished: boolean;
@@ -165,7 +165,7 @@ export interface RaceFinishedPayload {
   winnerId: string | null;
 }
 
-export interface FastGuessResult {
+export interface RaceGuessResult {
   attempt: Attempt;
   solved: boolean;
   winnerId: string | null;

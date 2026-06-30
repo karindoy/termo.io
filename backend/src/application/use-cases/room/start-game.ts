@@ -2,14 +2,14 @@ import type { RoomRecord, RoomRepository } from '../../../domain/repositories/ro
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
 import { UnauthorizedHostActionError } from '../../../domain/errors/unauthorized-host-action-error.js';
 import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-started-error.js';
-import type { RoundMode } from '../../game-modes/round-mode.js';
-import type { FastMode } from '../../game-modes/fast-mode.js';
+import type { ChampionshipMode } from '../../game-modes/championship-mode.js';
+import type { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 
 export interface StartGameDeps {
   roomRepository: RoomRepository;
-  roundRegistry: GameModeRegistry<RoundMode>;
-  fastRegistry: GameModeRegistry<FastMode>;
+  championshipRegistry: GameModeRegistry<ChampionshipMode>;
+  raceRegistry: GameModeRegistry<RaceMode>;
 }
 
 export interface StartGameInput {
@@ -29,12 +29,12 @@ export async function startGame(deps: StartGameDeps, input: StartGameInput): Pro
     throw new RoomAlreadyStartedError(`Sala "${input.code}" já foi iniciada`);
   }
 
-  if (record.mode === 'round') {
-    const gameMode = deps.roundRegistry.get(record.code);
+  if (record.mode === 'championship') {
+    const gameMode = deps.championshipRegistry.get(record.code);
     if (!gameMode) throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);
     gameMode.start();
   } else {
-    const gameMode = deps.fastRegistry.get(record.code);
+    const gameMode = deps.raceRegistry.get(record.code);
     if (!gameMode) throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);
     gameMode.start();
   }

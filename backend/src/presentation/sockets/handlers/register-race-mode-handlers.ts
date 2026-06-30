@@ -1,5 +1,5 @@
 import type { Namespace, Socket } from 'socket.io';
-import type { FastMode } from '../../../application/game-modes/fast-mode.js';
+import type { RaceMode } from '../../../application/game-modes/race-mode.js';
 import { submitGuess } from '../../../application/use-cases/submit-guess.js';
 import { joinRoom, type JoinRoomDeps } from '../../../application/use-cases/room/join-room.js';
 import { leaveRoom } from '../../../application/use-cases/room/leave-room.js';
@@ -17,14 +17,14 @@ import {
 } from '../dto/guess-payload.js';
 import { redactAttempt } from '../dto/redact-attempt.js';
 
-export function registerFastModeHandlers(
+export function registerRaceModeHandlers(
   io: Namespace,
-  registry: GameModeRegistry<FastMode>,
+  registry: GameModeRegistry<RaceMode>,
   joinRoomDeps: JoinRoomDeps,
   hostMigrationTracker: HostMigrationTracker,
   sessionStore: PlayerSessionStore,
 ): void {
-  registry.on('register', (code: string, gameMode: FastMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
+  registry.on('register', (code: string, gameMode: RaceMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
@@ -53,7 +53,7 @@ export function registerFastModeHandlers(
       }
 
       const { record } = result;
-      const gameMode = result.gameMode as FastMode;
+      const gameMode = result.gameMode as RaceMode;
 
       socket.join(parsed.data.code);
       joinedCode = parsed.data.code;
@@ -197,10 +197,10 @@ export function registerFastModeHandlers(
 
 function bindBroadcast(
   io: Namespace,
-  registry: GameModeRegistry<FastMode>,
+  registry: GameModeRegistry<RaceMode>,
   sessionStore: PlayerSessionStore,
   code: string,
-  gameMode: FastMode,
+  gameMode: RaceMode,
 ): void {
   gameMode.on('race:started', (config) => io.to(config.roomId).emit('race:started', config));
   gameMode.on('player:word-started', (snapshot) => io.to(snapshot.roomId).emit('player:word-started', snapshot));

@@ -2,7 +2,7 @@ import type { RoomSettings } from '../value-objects/room-settings.js';
 
 export const MAX_PLAYERS_PER_ROOM = 50;
 
-export type RoomMode = 'round' | 'fast';
+export type RoomMode = 'championship' | 'race';
 export type RoomStatus = 'lobby' | 'in-progress' | 'finished';
 
 export interface RoomPlayer {

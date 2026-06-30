@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FastMode } from './fast-mode.js';
+import { RaceMode } from './race-mode.js';
 import { Word } from '../../domain/entities/word.js';
 import type { WordRepository } from '../../domain/repositories/word-repository.js';
 import { GameAlreadyFinishedError } from '../../domain/errors/game-already-finished-error.js';
@@ -20,14 +20,14 @@ class FixedWordRepository implements WordRepository {
   }
 }
 
-function createFastMode(words: string[], wordCount = 2) {
+function createRaceMode(words: string[], wordCount = 2) {
   const repository = new FixedWordRepository(words);
-  return new FastMode('room-1', repository, { wordCount, timeLimitMs: 60_000 });
+  return new RaceMode('room-1', repository, { wordCount, timeLimitMs: 60_000 });
 }
 
-describe('FastMode', () => {
+describe('RaceMode', () => {
   it('emits race:started on start()', () => {
-    const gameMode = createFastMode(['TERMO', 'PONTE']);
+    const gameMode = createRaceMode(['TERMO', 'PONTE']);
     const onStarted = vi.fn();
     gameMode.on('race:started', onStarted);
 
@@ -37,7 +37,7 @@ describe('FastMode', () => {
   });
 
   it('lets two players progress through words independently', () => {
-    const gameMode = createFastMode(['TERMO', 'PONTE']);
+    const gameMode = createRaceMode(['TERMO', 'PONTE']);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
     gameMode.joinPlayer('p2', 'Bia');
@@ -49,7 +49,7 @@ describe('FastMode', () => {
   });
 
   it('declares the first player to solve every word the winner', () => {
-    const gameMode = createFastMode(['TERMO', 'PONTE']);
+    const gameMode = createRaceMode(['TERMO', 'PONTE']);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
     gameMode.joinPlayer('p2', 'Bia');
@@ -66,7 +66,7 @@ describe('FastMode', () => {
   });
 
   it('once a winner is decided, further guesses from other players are rejected', () => {
-    const gameMode = createFastMode(['TERMO', 'PONTE'], 1);
+    const gameMode = createRaceMode(['TERMO', 'PONTE'], 1);
     gameMode.start();
     gameMode.joinPlayer('p1', 'Ana');
     gameMode.joinPlayer('p2', 'Bia');
@@ -80,7 +80,7 @@ describe('FastMode', () => {
   it('reveals the word and force-advances a player whose personal timer expires', () => {
     vi.useFakeTimers();
     try {
-      const gameMode = createFastMode(['TERMO', 'PONTE']);
+      const gameMode = createRaceMode(['TERMO', 'PONTE']);
       gameMode.start();
       gameMode.joinPlayer('p1', 'Ana');
 
@@ -104,7 +104,7 @@ describe('FastMode', () => {
   it('disqualifies a player from winning once a timeout occurs, even after finishing all words', () => {
     vi.useFakeTimers();
     try {
-      const gameMode = createFastMode(['TERMO', 'PONTE']);
+      const gameMode = createRaceMode(['TERMO', 'PONTE']);
       gameMode.start();
       gameMode.joinPlayer('p1', 'Ana');
 
@@ -123,7 +123,7 @@ describe('FastMode', () => {
   it('finishes the race with no winner once every player times out on every word', () => {
     vi.useFakeTimers();
     try {
-      const gameMode = createFastMode(['TERMO', 'PONTE']);
+      const gameMode = createRaceMode(['TERMO', 'PONTE']);
       gameMode.start();
       gameMode.joinPlayer('p1', 'Ana');
       gameMode.joinPlayer('p2', 'Bia');
@@ -145,7 +145,7 @@ describe('FastMode', () => {
   it('clears a player timeout once they solve the word, so it never fires afterwards', () => {
     vi.useFakeTimers();
     try {
-      const gameMode = createFastMode(['TERMO', 'PONTE'], 1);
+      const gameMode = createRaceMode(['TERMO', 'PONTE'], 1);
       gameMode.start();
       gameMode.joinPlayer('p1', 'Ana');
 

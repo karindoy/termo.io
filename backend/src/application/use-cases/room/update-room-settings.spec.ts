@@ -4,8 +4,8 @@ import { startGame } from './start-game.js';
 import { updateRoomSettings } from './update-room-settings.js';
 import { InMemoryRoomRepository } from '../../../infrastructure/persistence/rooms/in-memory-room-repository.js';
 import { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
-import { RoundMode } from '../../game-modes/round-mode.js';
-import { FastMode } from '../../game-modes/fast-mode.js';
+import { ChampionshipMode } from '../../game-modes/championship-mode.js';
+import { RaceMode } from '../../game-modes/race-mode.js';
 import { Word } from '../../../domain/entities/word.js';
 import type { WordRepository } from '../../../domain/repositories/word-repository.js';
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
@@ -27,15 +27,15 @@ function createDeps(): CreateRoomDeps {
   return {
     roomRepository: new InMemoryRoomRepository(),
     wordRepository: new FixedWordRepository(),
-    roundRegistry: new GameModeRegistry<RoundMode>(),
-    fastRegistry: new GameModeRegistry<FastMode>(),
+    championshipRegistry: new GameModeRegistry<ChampionshipMode>(),
+    raceRegistry: new GameModeRegistry<RaceMode>(),
   };
 }
 
 describe('updateRoomSettings', () => {
   it('lets the host change settings while the room is in the lobby', async () => {
     const deps = createDeps();
-    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'round' });
+    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'championship' });
 
     const record = await updateRoomSettings(deps, { code: room.code, playerId: 'p1', settings: { wordCount: 3 } });
 
@@ -46,7 +46,7 @@ describe('updateRoomSettings', () => {
 
   it('throws UnauthorizedHostActionError for a non-host caller', async () => {
     const deps = createDeps();
-    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'round' });
+    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'championship' });
 
     await expect(
       updateRoomSettings(deps, { code: room.code, playerId: 'p2', settings: { wordCount: 3 } }),
@@ -55,7 +55,7 @@ describe('updateRoomSettings', () => {
 
   it('throws RoomAlreadyStartedError once the game has started', async () => {
     const deps = createDeps();
-    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'round' });
+    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'championship' });
     await startGame(deps, { code: room.code, playerId: 'p1' });
 
     await expect(
@@ -65,7 +65,7 @@ describe('updateRoomSettings', () => {
 
   it('throws InvalidRoomSettingsError for out-of-bounds settings', async () => {
     const deps = createDeps();
-    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'round' });
+    const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'championship' });
 
     await expect(
       updateRoomSettings(deps, { code: room.code, playerId: 'p1', settings: { wordCount: 16 } }),

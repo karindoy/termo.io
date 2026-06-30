@@ -38,7 +38,7 @@ export function PublicRoomBrowser({ onJoin }: { onJoin: (code: string) => void }
         {rooms.map((room) => (
           <li key={room.code} className="row-item">
             <span>
-              {room.code} · {room.mode === 'round' ? 'Round' : 'Fast'} · {room.players.length} jogador(es)
+              {room.code} · {room.mode === 'championship' ? 'Campeonato' : 'Corrida'} · {room.players.length} jogador(es)
             </span>
             <button className="btn btn-sm" onClick={() => onJoin(room.code)}>
               Entrar

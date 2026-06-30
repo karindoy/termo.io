@@ -26,14 +26,14 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 
 ## Game Modes
 
-### Round Mode
+### Championship Mode
 - 5 words per game.
 - Each word allows a **maximum of 6 attempts** per player.
 - For each word, the **first player to guess correctly scores a point**.
 - After a word is resolved (someone guesses it, or all eligible attempts are exhausted), the room moves to the next word.
 - Winner = highest score after 5 words.
 
-### Fast Mode (Time Attack)
+### Race Mode (Time Attack)
 - 5 words per game.
 - **Infinite attempts** per word (no 6-attempt cap).
 - The **first player to correctly guess all words wins the game** — it's a race, not a per-word point system.
@@ -50,10 +50,10 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 
 - Room creation (public/private) and instant join via code/link.
 - Nickname selection per session (no auth).
-- Round Mode and Fast Mode game logic.
+- Championship Mode and Race Mode game logic.
 - Shared real-time board: every player's guesses, attempt count, and letter feedback (colors + positions) visible to all players in the room as they happen.
 - Flexible letter input: within the active guess row, a player can reposition the cursor with arrow keys or by clicking/tapping any cell, then insert/overwrite the letter at that position — not limited to typing strictly left-to-right from the first empty cell.
-- Scoring (Round Mode) and race-to-finish detection (Fast Mode).
+- Scoring (Championship Mode) and race-to-finish detection (Race Mode).
 - Brazilian Portuguese word list/dictionary for secret words and valid-guess validation: fixed 5-letter length, accent-insensitive matching (base letter matches its accented counterpart), no repeat-avoidance — the same word can legitimately reappear across games/sessions.
 
 ## Out of scope (for now)
@@ -67,5 +67,5 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 
 - **Instant play**: nickname + room code is enough — zero signup friction.
 - **Fair word resolution**: the secret words and the correctness/feedback of any guess must be validated server-side only — never trust or leak answers client-side before a word is resolved.
-- **Real-time fairness**: in a 50-player room, all attempts and feedback must broadcast with low latency and consistent ordering so "first correct guess" (Round Mode) and "first to finish" (Fast Mode) are determined unambiguously and fairly.
+- **Real-time fairness**: in a 50-player room, all attempts and feedback must broadcast with low latency and consistent ordering so "first correct guess" (Championship Mode) and "first to finish" (Race Mode) are determined unambiguously and fairly.
 - **Resilient state**: a player refreshing/reconnecting mid-game should not lose their progress or break the room for others.

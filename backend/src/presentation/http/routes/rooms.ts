@@ -25,7 +25,7 @@ const roomSettingsBodySchema = z.object({
 const createRoomBodySchema = z.object({
   hostId: z.string().min(1).max(64),
   nickname: z.string().min(1).max(24),
-  mode: z.enum(['round', 'fast']),
+  mode: z.enum(['championship', 'race']),
   isPublic: z.boolean().optional(),
   settings: roomSettingsBodySchema.optional(),
 });

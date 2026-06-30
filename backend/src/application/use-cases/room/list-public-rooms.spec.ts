@@ -4,8 +4,8 @@ import { startGame } from './start-game.js';
 import { listPublicRooms } from './list-public-rooms.js';
 import { InMemoryRoomRepository } from '../../../infrastructure/persistence/rooms/in-memory-room-repository.js';
 import { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
-import { RoundMode } from '../../game-modes/round-mode.js';
-import { FastMode } from '../../game-modes/fast-mode.js';
+import { ChampionshipMode } from '../../game-modes/championship-mode.js';
+import { RaceMode } from '../../game-modes/race-mode.js';
 import { Word } from '../../../domain/entities/word.js';
 import type { WordRepository } from '../../../domain/repositories/word-repository.js';
 
@@ -23,17 +23,17 @@ function createDeps(): CreateRoomDeps {
   return {
     roomRepository: new InMemoryRoomRepository(),
     wordRepository: new FixedWordRepository(),
-    roundRegistry: new GameModeRegistry<RoundMode>(),
-    fastRegistry: new GameModeRegistry<FastMode>(),
+    championshipRegistry: new GameModeRegistry<ChampionshipMode>(),
+    raceRegistry: new GameModeRegistry<RaceMode>(),
   };
 }
 
 describe('listPublicRooms', () => {
   it('only lists public rooms still in their lobby', async () => {
     const deps = createDeps();
-    const publicLobby = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'round', isPublic: true });
-    await createRoom(deps, { hostId: 'p2', nickname: 'Bia', mode: 'round', isPublic: false });
-    const startedPublic = await createRoom(deps, { hostId: 'p3', nickname: 'Cia', mode: 'round', isPublic: true });
+    const publicLobby = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'championship', isPublic: true });
+    await createRoom(deps, { hostId: 'p2', nickname: 'Bia', mode: 'championship', isPublic: false });
+    const startedPublic = await createRoom(deps, { hostId: 'p3', nickname: 'Cia', mode: 'championship', isPublic: true });
     await startGame(deps, { code: startedPublic.code, playerId: 'p3' });
 
     const rooms = await listPublicRooms(deps);

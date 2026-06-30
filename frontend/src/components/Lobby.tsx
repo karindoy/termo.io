@@ -51,7 +51,7 @@ export function Lobby({
       </header>
 
       <p style={{ color: 'var(--color-text-muted)' }}>
-        Modo: {room.mode === 'round' ? 'Round' : 'Fast'} · {room.isPublic ? 'Pública' : 'Privada'}
+        Modo: {room.mode === 'championship' ? 'Campeonato' : 'Corrida'} · {room.isPublic ? 'Pública' : 'Privada'}
       </p>
 
       {hostMigratedTo && (
@@ -90,7 +90,7 @@ export function Lobby({
             onChange={(event) => handleSettingsChange('wordCount', Number(event.target.value))}
           />
         </label>
-        {room.mode === 'round' && (
+        {room.mode === 'championship' && (
           <label className="field">
             Tentativas por palavra
             <input

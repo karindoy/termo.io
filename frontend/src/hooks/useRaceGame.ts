@@ -3,7 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
 import type {
   Attempt,
-  FastGuessResult,
+  RaceGuessResult,
   Player,
   PlayerProgressSnapshot,
   PlayerRoundSnapshot,
@@ -16,14 +16,14 @@ import type {
 
 const REVEAL_DISPLAY_MS = 4000;
 
-export interface FastRevealInfo {
+export interface RaceRevealInfo {
   playerId: string;
   revealedWord: string;
   reason: PlayerWordResolvedPayload['reason'];
   playerWon: boolean;
 }
 
-export function useFastGame(code: string, playerId: string, nickname: string) {
+export function useRaceGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wordIndexRef = useRef<Record<string, number>>({});
@@ -34,7 +34,7 @@ export function useFastGame(code: string, playerId: string, nickname: string) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [progress, setProgress] = useState<Record<string, PlayerProgressSnapshot>>({});
   const [attemptsByPlayer, setAttemptsByPlayer] = useState<Record<string, Attempt[]>>({});
-  const [reveal, setReveal] = useState<FastRevealInfo | null>(null);
+  const [reveal, setReveal] = useState<RaceRevealInfo | null>(null);
   const [finished, setFinished] = useState<RaceFinishedPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export function useFastGame(code: string, playerId: string, nickname: string) {
   }
 
   useEffect(() => {
-    const socket = createSocket('fast');
+    const socket = createSocket('race');
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -105,7 +105,7 @@ export function useFastGame(code: string, playerId: string, nickname: string) {
 
     socket.on('race:finished', (payload: RaceFinishedPayload) => setFinished(payload));
 
-    socket.on('guess:result', (result: FastGuessResult) => {
+    socket.on('guess:result', (result: RaceGuessResult) => {
       setError(null);
       if (result.wordIndex !== wordIndexRef.current[result.attempt.playerId]) return;
       setAttemptsByPlayer((prev) => ({

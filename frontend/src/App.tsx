@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useGame } from './hooks/useGame';
-import { useFastGame } from './hooks/useFastGame';
+import { useRaceGame } from './hooks/useRaceGame';
 import { useGuessInput } from './hooks/useGuessInput';
 import { WordGrid } from './components/WordGrid';
 import { Keyboard } from './components/Keyboard';
@@ -10,7 +10,7 @@ import { RoundStatus } from './components/RoundStatus';
 import { WordRevealBanner } from './components/WordRevealBanner';
 import { RaceStatus } from './components/RaceStatus';
 import { RaceLeaderboard } from './components/RaceLeaderboard';
-import { FastRevealBanner } from './components/FastRevealBanner';
+import { RaceRevealBanner } from './components/RaceRevealBanner';
 import { Lobby } from './components/Lobby';
 import { PublicRoomBrowser } from './components/PublicRoomBrowser';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
@@ -37,11 +37,11 @@ export function App() {
     );
   }
 
-  if (room.mode === 'round') {
-    return <RoundGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
+  if (room.mode === 'championship') {
+    return <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
   }
 
-  return <FastGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
+  return <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} onBack={() => setRoom(null)} />;
 }
 
 function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
@@ -73,7 +73,7 @@ function RoomChoiceScreen({
   nickname: string;
   onRoomReady: (room: RoomRecord) => void;
 }) {
-  const [mode, setMode] = useState<RoomMode>('round');
+  const [mode, setMode] = useState<RoomMode>('championship');
   const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -113,8 +113,8 @@ function RoomChoiceScreen({
       <section className="card">
         <h2>Criar uma sala</h2>
         <select className="input" value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
-          <option value="round">Modo Round</option>
-          <option value="fast">Modo Fast</option>
+          <option value="championship">Campeonato</option>
+          <option value="race">Corrida</option>
         </select>
         <label className="checkbox-field">
           <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
@@ -146,7 +146,7 @@ function RoomChoiceScreen({
   );
 }
 
-function RoundGameRoom({
+function ChampionshipGameRoom({
   code,
   playerId,
   nickname,
@@ -203,7 +203,7 @@ function RoundGameRoom({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>termo.io — Round</h1>
+        <h1>termo.io — Campeonato</h1>
         <div className="status-pill">
           <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
@@ -284,7 +284,7 @@ function RoundGameRoom({
   );
 }
 
-function FastGameRoom({
+function RaceGameRoom({
   code,
   playerId,
   nickname,
@@ -296,7 +296,7 @@ function FastGameRoom({
   onBack: () => void;
 }) {
   const { connected, config, players, progress, attemptsByPlayer, reveal, finished, error, submitGuess } =
-    useFastGame(code, playerId, nickname);
+    useRaceGame(code, playerId, nickname);
 
   const wordLength = config?.wordLength ?? 5;
   const myAttempts = attemptsByPlayer[playerId] ?? [];
@@ -335,7 +335,7 @@ function FastGameRoom({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>termo.io — Fast</h1>
+        <h1>termo.io — Corrida</h1>
         <div className="status-pill">
           <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
@@ -357,7 +357,7 @@ function FastGameRoom({
               : '🏁 Corrida encerrada — ninguém acertou todas as palavras.'}
           </p>
         )}
-        {reveal && <FastRevealBanner reveal={reveal} players={players} />}
+        {reveal && <RaceRevealBanner reveal={reveal} players={players} />}
         {myProgress?.finished && !finished && (
           <p className="banner banner-warning">👀 Você terminou todas as palavras — aguarde o fim da corrida.</p>
         )}

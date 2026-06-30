@@ -3,14 +3,14 @@ import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.j
 import { RoomFullError } from '../../../domain/errors/room-full-error.js';
 import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-started-error.js';
 import type { GameMode } from '../../game-modes/game-mode.js';
-import type { RoundMode } from '../../game-modes/round-mode.js';
-import type { FastMode } from '../../game-modes/fast-mode.js';
+import type { ChampionshipMode } from '../../game-modes/championship-mode.js';
+import type { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 
 export interface JoinRoomDeps {
   roomRepository: RoomRepository;
-  roundRegistry: GameModeRegistry<RoundMode>;
-  fastRegistry: GameModeRegistry<FastMode>;
+  championshipRegistry: GameModeRegistry<ChampionshipMode>;
+  raceRegistry: GameModeRegistry<RaceMode>;
 }
 
 export interface JoinRoomInput {
@@ -40,7 +40,7 @@ export async function joinRoom(deps: JoinRoomDeps, input: JoinRoomInput): Promis
     }
   }
 
-  const registry = record.mode === 'round' ? deps.roundRegistry : deps.fastRegistry;
+  const registry = record.mode === 'championship' ? deps.championshipRegistry : deps.raceRegistry;
   const gameMode = registry.get(record.code);
   if (!gameMode) {
     throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);

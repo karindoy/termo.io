@@ -51,7 +51,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
   }
 
   useEffect(() => {
-    const socket = createSocket('round');
+    const socket = createSocket('championship');
     socketRef.current = socket;
 
     socket.on('connect', () => {

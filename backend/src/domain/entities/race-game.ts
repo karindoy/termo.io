@@ -4,10 +4,10 @@ import { WordRound } from './word-round.js';
 import type { WordRepository } from '../repositories/word-repository.js';
 import { GameAlreadyFinishedError } from '../errors/game-already-finished-error.js';
 
-export type FastGamePhase = 'playing' | 'finished';
-export type FastResolutionReason = 'solved' | 'timeout';
+export type RaceGamePhase = 'playing' | 'finished';
+export type RaceResolutionReason = 'solved' | 'timeout';
 
-export interface FastGameOptions {
+export interface RaceGameOptions {
   wordCount: number;
   timeLimitMs: number;
 }
@@ -23,7 +23,7 @@ interface PlayerProgress {
 export interface PlayerWordResolution {
   playerId: string;
   wordIndex: number;
-  reason: FastResolutionReason;
+  reason: RaceResolutionReason;
   revealedWord: string;
   hasNextWord: boolean;
   playerFinished: boolean;
@@ -40,8 +40,8 @@ export interface PlayerProgressSnapshot {
   won: boolean;
 }
 
-export class FastGame {
-  phase: FastGamePhase = 'playing';
+export class RaceGame {
+  phase: RaceGamePhase = 'playing';
   winnerId: string | null = null;
 
   private readonly words: Word[];
@@ -49,7 +49,7 @@ export class FastGame {
 
   constructor(
     private readonly wordRepository: WordRepository,
-    private readonly options: FastGameOptions,
+    private readonly options: RaceGameOptions,
   ) {
     this.words = Array.from({ length: options.wordCount }, () => wordRepository.getRandomWord());
   }
@@ -102,7 +102,7 @@ export class FastGame {
     return this.requirePlayer(playerId).round.submitGuess(playerId, nickname, guessValue);
   }
 
-  resolvePlayerWord(playerId: string, reason: FastResolutionReason): PlayerWordResolution {
+  resolvePlayerWord(playerId: string, reason: RaceResolutionReason): PlayerWordResolution {
     const progress = this.requirePlayer(playerId);
     progress.round.resolve(reason, reason === 'solved' ? playerId : null);
     if (reason === 'timeout') progress.allSolved = false;

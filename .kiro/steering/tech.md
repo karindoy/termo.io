@@ -17,7 +17,7 @@ inclusion: always
   - **Redis** for live room/game state (players, current word index, attempts, scores) — rooms are short-lived and need fast read/write with TTL cleanup.
   - **Postgres** (or simpler, a versioned static word list file/table) for the Brazilian Portuguese word dictionary (valid secret words + valid-guess word list). Add a DB only if word-list size/management actually needs it — a curated JSON/SQLite word list may be enough for v1.
 - **Word resolution & scoring authority**: secret word selection, guess validation (correct/in-word/absent + position), attempt counting, and point/win determination happen **server-side only**. The client never receives the secret word or computes correctness itself.
-- **Concurrency-critical logic**: in Round Mode, "first correct guess scores the point" requires the server to be the single source of truth and process guesses in a strict order per room (no client timestamps) to avoid race conditions with 50 concurrent players.
+- **Concurrency-critical logic**: in Championship Mode, "first correct guess scores the point" requires the server to be the single source of truth and process guesses in a strict order per room (no client timestamps) to avoid race conditions with 50 concurrent players.
 
 ## Word Dictionary & Matching Rules
 
@@ -47,7 +47,7 @@ Layered/Clean Architecture (see `structure.md`): `domain` (word matching rules, 
 ## Design Patterns in Use
 
 - **Repository**: `RoomRepository` (Redis-backed), `WordRepository` (dictionary lookup/validation) — interfaces in `domain`, implementations in `infrastructure`.
-- **Strategy**: `GameMode` interface with two implementations — `RoundMode` (6 attempts, per-word point to first correct guess) and `FastMode` (infinite attempts, first to finish all 5 words wins). Adding a future mode means implementing the interface, not branching in use-cases.
+- **Strategy**: `GameMode` interface with two implementations — `ChampionshipMode` (6 attempts, per-word point to first correct guess) and `RaceMode` (infinite attempts, first to finish all 5 words wins). Adding a future mode means implementing the interface, not branching in use-cases.
 - **Factory**: `RoomFactory`/`GameFactory` for constructing valid room/game state (assigns the 5 secret words, initializes per-player attempt state).
 - **Observer/Event Emitter**: domain events (`guess.submitted`, `word.resolved`, `game.ended`) decoupled from socket broadcasting logic.
 - **Adapter**: wrap Socket.io/Redis clients behind internal interfaces so they're mockable in tests.
@@ -72,7 +72,7 @@ The app is developed and deployed via Docker — local dev, CI, and production a
 
 - **Unit**: Vitest or Jest for `domain`/`application` — word-matching/feedback logic (green/yellow/gray), attempt limits, scoring, win conditions for both modes.
 - **Integration**: repository tests against real (containerized) Redis.
-- **E2E/real-time**: Socket.io client-driven tests simulating multi-player rooms (join, concurrent guesses, first-correct-guess race in Round Mode, first-to-finish race in Fast Mode).
+- **E2E/real-time**: Socket.io client-driven tests simulating multi-player rooms (join, concurrent guesses, first-correct-guess race in Championship Mode, first-to-finish race in Race Mode).
 
 ## Tooling
 

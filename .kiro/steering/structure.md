@@ -19,7 +19,7 @@ backend/
 │   │   ├── use-cases/
 │   │   │   ├── room/            # create-room, join-room, leave-room, list-public-rooms, migrate-host
 │   │   │   └── game/            # start-game, submit-guess, advance-to-next-word, end-game, resolve-tie-break
-│   │   └── game-modes/          # GameMode strategy interface + RoundMode, FastMode implementations
+│   │   └── game-modes/          # GameMode strategy interface + ChampionshipMode, RaceMode implementations
 │   │
 │   ├── infrastructure/
 │   │   ├── persistence/
@@ -77,5 +77,5 @@ Root holds only cross-cutting files: `package.json` (npm workspaces: `backend`, 
 - Tests co-located as `*.spec.ts` next to the source file they cover, within each package.
 - One exported concept per file where practical; barrel `index.ts` files only at module boundaries (e.g. `domain/entities/index.ts`), not throughout.
 - Socket event names are namespaced and typed in `backend/src/presentation/sockets/dto` and shared with the frontend via a published/linked types package (or copied contract types) — never re-declared ad hoc on the client.
-- New game modes are added by implementing the `GameMode` strategy interface in `backend/src/application/game-modes/` (currently `RoundMode`, `FastMode`), not by branching inside use-cases.
+- New game modes are added by implementing the `GameMode` strategy interface in `backend/src/application/game-modes/` (currently `ChampionshipMode`, `RaceMode`), not by branching inside use-cases.
 - Word feedback (green/yellow/gray) is always computed in `backend` `domain` and never trusted from or duplicated in `frontend`.
