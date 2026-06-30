@@ -3,7 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
 import type { HostMigratedPayload, RoomRecord, RoomSessionPayload, RoomSettings } from '../lib/types';
 
-export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: string) {
+export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: string, onNotFound?: () => void) {
   const { code, mode } = initialRoom;
   const socketRef = useRef<Socket | null>(null);
   const sessionSecretRef = useRef<string | null>(null);
@@ -41,7 +41,10 @@ export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: st
       setHostMigratedTo(payload.hostId);
     });
 
-    socket.on('room:error', (payload: { message: string }) => setError(payload.message));
+    socket.on('room:error', (payload: { message: string; code?: string }) => {
+      setError(payload.message);
+      if (payload.code === 'ROOM_NOT_FOUND') onNotFound?.();
+    });
 
     return () => {
       socket.disconnect();

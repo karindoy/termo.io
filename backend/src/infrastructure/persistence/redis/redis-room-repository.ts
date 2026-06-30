@@ -47,6 +47,14 @@ export class RedisRoomRepository implements RoomRepository {
     await this.redis.del(playerRoomKey(playerId));
   }
 
+  async clearPublicLobbies(): Promise<void> {
+    const codes = await this.redis.smembers(PUBLIC_LOBBIES_KEY);
+    if (codes.length > 0) {
+      await this.redis.del(...codes.map(roomKey));
+    }
+    await this.redis.del(PUBLIC_LOBBIES_KEY);
+  }
+
   async listPublicLobbies(): Promise<RoomRecord[]> {
     const codes = await this.redis.smembers(PUBLIC_LOBBIES_KEY);
     const records: RoomRecord[] = [];

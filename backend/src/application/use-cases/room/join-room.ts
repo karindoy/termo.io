@@ -48,6 +48,9 @@ export async function joinRoom(deps: JoinRoomDeps, input: JoinRoomInput): Promis
   const registry = record.mode === 'championship' ? deps.championshipRegistry : deps.raceRegistry;
   const gameMode = registry.get(record.code);
   if (!gameMode) {
+    if (record.status === 'lobby') {
+      await deps.roomRepository.delete(input.code);
+    }
     throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);
   }
 

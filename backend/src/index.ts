@@ -28,6 +28,8 @@ async function main(): Promise<void> {
   const hostMigrationTracker = new HostMigrationTracker();
   const sessionStore = new PlayerSessionStore();
 
+  await roomRepository.clearPublicLobbies();
+
   const roomDeps = { roomRepository, wordRepository, championshipRegistry, raceRegistry, sessionStore };
 
   await app.register(helmet);

@@ -21,6 +21,8 @@ export class InMemoryRoomRepository implements RoomRepository {
     this.rooms.delete(code);
   }
 
+  async clearPublicLobbies(): Promise<void> {}
+
   async listPublicLobbies(): Promise<RoomRecord[]> {
     return Array.from(this.rooms.values())
       .filter((record) => record.isPublic && record.status === 'lobby')

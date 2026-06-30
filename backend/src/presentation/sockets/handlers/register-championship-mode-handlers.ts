@@ -18,6 +18,7 @@ import {
   updateSettingsPayloadSchema,
 } from '../dto/guess-payload.js';
 import { redactAttempt, redactAttemptsForViewer } from '../dto/redact-attempt.js';
+import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
 
 export function registerChampionshipModeHandlers(
   io: Namespace,
@@ -51,7 +52,8 @@ export function registerChampionshipModeHandlers(
         result = await joinRoom(joinRoomDeps, parsed.data);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';
-        socket.emit('room:error', { message });
+        const code = error instanceof RoomNotFoundError ? 'ROOM_NOT_FOUND' : undefined;
+        socket.emit('room:error', { message, ...(code && { code }) });
         return;
       }
 
@@ -216,15 +218,30 @@ export function registerChampionshipModeHandlers(
       if (!code || !playerId) return;
 
       const record = await joinRoomDeps.roomRepository.findByCode(code);
-      if (!record || record.hostId !== playerId) return;
+      if (!record) return;
 
-      hostMigrationTracker.onHostDisconnected(code, async () => {
-        const result = await migrateHost(joinRoomDeps, { code });
-        if (result.newHostId) {
-          io.to(code).emit('host:migrated', { code, hostId: result.newHostId });
-          io.to(code).emit('lobby:state', result.record);
+      if (record.status === 'lobby') {
+        try {
+          const result = await leaveRoom(joinRoomDeps, { code, playerId });
+          if (!result.deleted && result.record) {
+            io.to(code).emit('lobby:state', result.record);
+            if (result.hostMigratedTo) {
+              hostMigrationTracker.cancel(code);
+              io.to(code).emit('host:migrated', { code, hostId: result.hostMigratedTo });
+            }
+          }
+        } catch {
+          // Room already gone — nothing to do
         }
-      });
+      } else if (record.hostId === playerId) {
+        hostMigrationTracker.onHostDisconnected(code, async () => {
+          const result = await migrateHost(joinRoomDeps, { code });
+          if (result.newHostId) {
+            io.to(code).emit('host:migrated', { code, hostId: result.newHostId });
+            io.to(code).emit('lobby:state', result.record);
+          }
+        });
+      }
     });
   });
 }

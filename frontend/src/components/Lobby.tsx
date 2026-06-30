@@ -19,6 +19,7 @@ export function Lobby({
     initialRoom,
     playerId,
     nickname,
+    onBack,
   );
   const [settingsDraft, setSettingsDraft] = useState<RoomSettings>(initialRoom.settings);
 
