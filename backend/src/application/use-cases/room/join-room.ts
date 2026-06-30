@@ -6,11 +6,14 @@ import type { GameMode } from '../../game-modes/game-mode.js';
 import type { ChampionshipMode } from '../../game-modes/championship-mode.js';
 import type { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
+import type { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
+import { leaveRoom, type LeaveRoomResult } from './leave-room.js';
 
 export interface JoinRoomDeps {
   roomRepository: RoomRepository;
   championshipRegistry: GameModeRegistry<ChampionshipMode>;
   raceRegistry: GameModeRegistry<RaceMode>;
+  sessionStore: PlayerSessionStore;
 }
 
 export interface JoinRoomInput {
@@ -22,6 +25,8 @@ export interface JoinRoomInput {
 export interface JoinRoomResult {
   record: RoomRecord;
   gameMode: GameMode;
+  /** The room (if any) the player was evicted from as a side effect of this join — null when they weren't in another room. */
+  previousRoom: LeaveRoomResult | null;
 }
 
 export async function joinRoom(deps: JoinRoomDeps, input: JoinRoomInput): Promise<JoinRoomResult> {
@@ -46,6 +51,11 @@ export async function joinRoom(deps: JoinRoomDeps, input: JoinRoomInput): Promis
     throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);
   }
 
+  let previousRoom: LeaveRoomResult | null = null;
+  if (!alreadyJoined) {
+    previousRoom = await leavePreviousRoom(deps, input.playerId, input.code);
+  }
+
   gameMode.joinPlayer(input.playerId, input.nickname);
 
   if (!alreadyJoined) {
@@ -53,5 +63,23 @@ export async function joinRoom(deps: JoinRoomDeps, input: JoinRoomInput): Promis
     await deps.roomRepository.save(record);
   }
 
-  return { record, gameMode };
+  await deps.roomRepository.setActiveRoomForPlayer(input.playerId, input.code);
+
+  return { record, gameMode, previousRoom };
+}
+
+async function leavePreviousRoom(
+  deps: JoinRoomDeps,
+  playerId: string,
+  newCode: string,
+): Promise<LeaveRoomResult | null> {
+  const previousCode = await deps.roomRepository.findActiveRoomCodeForPlayer(playerId);
+  if (!previousCode || previousCode === newCode) return null;
+
+  try {
+    return await leaveRoom(deps, { code: previousCode, playerId });
+  } catch {
+    // Previous room is already gone (e.g. it was already deleted/expired) — nothing to clean up.
+    return null;
+  }
 }

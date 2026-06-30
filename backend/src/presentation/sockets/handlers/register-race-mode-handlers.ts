@@ -55,8 +55,19 @@ export function registerRaceModeHandlers(
         return;
       }
 
-      const { record } = result;
+      const { record, previousRoom } = result;
       const gameMode = result.gameMode as RaceMode;
+
+      if (previousRoom) {
+        socket.leave(previousRoom.code);
+        if (previousRoom.record) {
+          io.to(previousRoom.code).emit('lobby:state', previousRoom.record);
+          if (previousRoom.hostMigratedTo) {
+            hostMigrationTracker.cancel(previousRoom.code);
+            io.to(previousRoom.code).emit('host:migrated', { code: previousRoom.code, hostId: previousRoom.hostMigratedTo });
+          }
+        }
+      }
 
       socket.join(parsed.data.code);
       joinedCode = parsed.data.code;
@@ -105,10 +116,12 @@ export function registerRaceModeHandlers(
       try {
         const { record, hostMigratedTo } = await leaveRoom(joinRoomDeps, parsed.data);
         socket.leave(parsed.data.code);
-        io.to(parsed.data.code).emit('lobby:state', record);
-        if (hostMigratedTo) {
-          hostMigrationTracker.cancel(parsed.data.code);
-          io.to(parsed.data.code).emit('host:migrated', { code: parsed.data.code, hostId: hostMigratedTo });
+        if (record) {
+          io.to(parsed.data.code).emit('lobby:state', record);
+          if (hostMigratedTo) {
+            hostMigrationTracker.cancel(parsed.data.code);
+            io.to(parsed.data.code).emit('host:migrated', { code: parsed.data.code, hostId: hostMigratedTo });
+          }
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Erro desconhecido';

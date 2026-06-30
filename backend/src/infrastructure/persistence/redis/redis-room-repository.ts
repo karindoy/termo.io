@@ -8,6 +8,10 @@ function roomKey(code: string): string {
   return `room:${code}`;
 }
 
+function playerRoomKey(playerId: string): string {
+  return `player-room:${playerId}`;
+}
+
 export class RedisRoomRepository implements RoomRepository {
   constructor(private readonly redis: Redis) {}
 
@@ -24,6 +28,23 @@ export class RedisRoomRepository implements RoomRepository {
   async save(record: RoomRecord): Promise<void> {
     await this.redis.set(roomKey(record.code), JSON.stringify(record), 'KEEPTTL');
     await this.syncPublicLobbyMembership(record);
+  }
+
+  async delete(code: string): Promise<void> {
+    await this.redis.del(roomKey(code));
+    await this.redis.srem(PUBLIC_LOBBIES_KEY, code);
+  }
+
+  async findActiveRoomCodeForPlayer(playerId: string): Promise<string | null> {
+    return await this.redis.get(playerRoomKey(playerId));
+  }
+
+  async setActiveRoomForPlayer(playerId: string, code: string): Promise<void> {
+    await this.redis.set(playerRoomKey(playerId), code, 'EX', ROOM_TTL_SECONDS);
+  }
+
+  async clearActiveRoomForPlayer(playerId: string): Promise<void> {
+    await this.redis.del(playerRoomKey(playerId));
   }
 
   async listPublicLobbies(): Promise<RoomRecord[]> {

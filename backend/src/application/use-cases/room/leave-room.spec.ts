@@ -9,6 +9,7 @@ import { RaceMode } from '../../game-modes/race-mode.js';
 import { Word } from '../../../domain/entities/word.js';
 import type { WordRepository } from '../../../domain/repositories/word-repository.js';
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
+import { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
 
 class FixedWordRepository implements WordRepository {
   getRandomWord(): Word {
@@ -20,12 +21,13 @@ class FixedWordRepository implements WordRepository {
   }
 }
 
-function createDeps(): CreateRoomDeps {
+function createDeps(): CreateRoomDeps & { sessionStore: PlayerSessionStore } {
   return {
     roomRepository: new InMemoryRoomRepository(),
     wordRepository: new FixedWordRepository(),
     championshipRegistry: new GameModeRegistry<ChampionshipMode>(),
     raceRegistry: new GameModeRegistry<RaceMode>(),
+    sessionStore: new PlayerSessionStore(),
   };
 }
 
@@ -37,7 +39,7 @@ describe('leaveRoom', () => {
 
     const { record, hostMigratedTo } = await leaveRoom(deps, { code: room.code, playerId: 'p2' });
 
-    expect(record.players).toEqual([{ playerId: 'p1', nickname: 'Ana' }]);
+    expect(record?.players).toEqual([{ playerId: 'p1', nickname: 'Ana' }]);
     expect(hostMigratedTo).toBeNull();
   });
 
@@ -49,18 +51,21 @@ describe('leaveRoom', () => {
     const { record, hostMigratedTo } = await leaveRoom(deps, { code: room.code, playerId: 'p1' });
 
     expect(hostMigratedTo).toBe('p2');
-    expect(record.hostId).toBe('p2');
-    expect(record.players).toEqual([{ playerId: 'p2', nickname: 'Bia' }]);
+    expect(record?.hostId).toBe('p2');
+    expect(record?.players).toEqual([{ playerId: 'p2', nickname: 'Bia' }]);
   });
 
-  it('leaves no host to migrate to once the last player leaves', async () => {
+  it('deletes the room once the last player leaves', async () => {
     const deps = createDeps();
     const room = await createRoom(deps, { hostId: 'p1', nickname: 'Ana', mode: 'championship' });
 
-    const { record, hostMigratedTo } = await leaveRoom(deps, { code: room.code, playerId: 'p1' });
+    const { record, hostMigratedTo, deleted } = await leaveRoom(deps, { code: room.code, playerId: 'p1' });
 
     expect(hostMigratedTo).toBeNull();
-    expect(record.players).toEqual([]);
+    expect(record).toBeNull();
+    expect(deleted).toBe(true);
+    expect(await deps.roomRepository.findByCode(room.code)).toBeNull();
+    expect(deps.championshipRegistry.get(room.code)).toBeUndefined();
   });
 
   it('throws RoomNotFoundError for an unknown code', async () => {

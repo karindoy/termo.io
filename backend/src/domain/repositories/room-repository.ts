@@ -25,5 +25,10 @@ export interface RoomRepository {
   create(record: RoomRecord): Promise<void>;
   findByCode(code: string): Promise<RoomRecord | null>;
   save(record: RoomRecord): Promise<void>;
+  delete(code: string): Promise<void>;
   listPublicLobbies(): Promise<RoomRecord[]>;
+  /** Tracks which room a player currently occupies, independent of game mode, so joining a new room can evict them from a previous one. */
+  findActiveRoomCodeForPlayer(playerId: string): Promise<string | null>;
+  setActiveRoomForPlayer(playerId: string, code: string): Promise<void>;
+  clearActiveRoomForPlayer(playerId: string): Promise<void>;
 }

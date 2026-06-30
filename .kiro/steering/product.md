@@ -46,6 +46,7 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 - **Capacity**: up to **50 players** in a private room.
 - **No account required**: players join instantly with just a chosen **nickname**.
 - Lobby shows current players before the game starts; host (room creator) controls start/settings.
+- **Single-room membership**: a player can only be active in one room at a time. If a player joins a different room, they are first removed from any room they were already in. If that vacated room reaches **0 players**, it is deleted immediately (not left to passive TTL expiry).
 
 ## Core Features (initial scope)
 

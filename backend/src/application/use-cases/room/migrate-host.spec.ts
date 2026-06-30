@@ -9,6 +9,7 @@ import { RaceMode } from '../../game-modes/race-mode.js';
 import { Word } from '../../../domain/entities/word.js';
 import type { WordRepository } from '../../../domain/repositories/word-repository.js';
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
+import { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
 
 class FixedWordRepository implements WordRepository {
   getRandomWord(): Word {
@@ -20,12 +21,13 @@ class FixedWordRepository implements WordRepository {
   }
 }
 
-function createDeps(): CreateRoomDeps {
+function createDeps(): CreateRoomDeps & { sessionStore: PlayerSessionStore } {
   return {
     roomRepository: new InMemoryRoomRepository(),
     wordRepository: new FixedWordRepository(),
     championshipRegistry: new GameModeRegistry<ChampionshipMode>(),
     raceRegistry: new GameModeRegistry<RaceMode>(),
+    sessionStore: new PlayerSessionStore(),
   };
 }
 

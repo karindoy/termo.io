@@ -63,6 +63,7 @@ export async function createRoom(deps: CreateRoomDeps, input: CreateRoomInput): 
   };
 
   await deps.roomRepository.create(record);
+  await deps.roomRepository.setActiveRoomForPlayer(input.hostId, code);
   return record;
 }
 
