@@ -19,7 +19,7 @@ export function RaceLeaderboard({ players, progress, wordCount, ownPlayerId }: R
         const entry = progress[player.playerId];
         const wordIndex = entry?.wordIndex ?? 0;
         return (
-          <div key={player.playerId} className={['row-item', player.playerId === ownPlayerId ? 'is-self' : ''].join(' ').trim()}>
+          <div key={player.playerId} id={`leaderboard-player-${player.playerId}`} className={['row-item', player.playerId === ownPlayerId ? 'is-self' : ''].join(' ').trim()}>
             <span>
               {entry?.won ? '🏆 ' : entry?.finished ? '✅ ' : ''}
               {player.nickname}

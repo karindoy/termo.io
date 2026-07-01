@@ -26,9 +26,9 @@ export function Keyboard({ attempts, onLetter, onEnter, onBackspace, disabled }:
   const letterStatus = buildLetterStatusMap(attempts);
 
   return (
-    <div className="keyboard">
+    <div id="keyboard" className="keyboard">
       {ROWS.map((row, rowIndex) => (
-        <div key={rowIndex} className="keyboard-row">
+        <div key={rowIndex} id={`keyboard-row-${rowIndex}`} className="keyboard-row">
           {row.split('').map((letter) => {
             const status = letterStatus[letter];
             return (
@@ -42,16 +42,18 @@ export function Keyboard({ attempts, onLetter, onEnter, onBackspace, disabled }:
               </button>
             );
           })}
+          {rowIndex === 1 && (
+            <button disabled={disabled} onClick={onBackspace} className="key key-wide">
+              ⌫
+            </button>
+          )}
+          {rowIndex === 2 && (
+            <button disabled={disabled} onClick={onEnter} className="key key-wide key-enter">
+              Enviar
+            </button>
+          )}
         </div>
       ))}
-      <div className="keyboard-row">
-        <button disabled={disabled} onClick={onEnter} className="key key-wide">
-          Enviar
-        </button>
-        <button disabled={disabled} onClick={onBackspace} className="key key-wide">
-          ⌫
-        </button>
-      </div>
     </div>
   );
 }

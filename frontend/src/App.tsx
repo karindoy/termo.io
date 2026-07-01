@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from './hooks/useGame';
 import { useRaceGame } from './hooks/useRaceGame';
 import { useGuessInput } from './hooks/useGuessInput';
+import { useBanner } from './hooks/useBanner';
 import { WordGrid } from './components/WordGrid';
 import { Keyboard } from './components/Keyboard';
 import { PlayerBoard } from './components/PlayerBoard';
 import { ScoreBoard } from './components/ScoreBoard';
 import { RoundStatus } from './components/RoundStatus';
-import { WordRevealBanner } from './components/WordRevealBanner';
+import { BannerSlot } from './components/BannerSlot';
 import { RaceStatus } from './components/RaceStatus';
 import { RaceLeaderboard } from './components/RaceLeaderboard';
 import { RaceSummary } from './components/RaceSummary';
@@ -226,6 +227,68 @@ function ChampionshipGameRoom({
 
   const otherPlayerRows = round?.maxAttempts ?? 6;
 
+  const { banner: eventBanner, show } = useBanner();
+
+  // Stable ref so banner effects don't re-fire when players list updates.
+  const playersRef = useRef(players);
+  useEffect(() => { playersRef.current = players; });
+
+  // Show immediately when someone solves — reveal arrives ~100 ms later and replaces it.
+  const prevSolvedByRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevSolvedByRef.current;
+    prevSolvedByRef.current = solvedBy;
+    if (!solvedBy || solvedBy === prev || finished) return;
+    const name = playersRef.current.find((p) => p.playerId === solvedBy)?.nickname ?? 'Alguém';
+    show(`🎉 ${name} acertou a palavra!`, 'success', 4000);
+  }, [solvedBy, finished, show]);
+
+  // Reveal replaces the solve notice with the actual word and reason.
+  useEffect(() => {
+    if (!reveal) return;
+    const winnerNickname = playersRef.current.find((p) => p.playerId === reveal.winnerId)?.nickname;
+    const prefix = reveal.isTieBreak ? 'Desempate — ' : '';
+    let message: string;
+    if (reveal.reason === 'solved' && winnerNickname) {
+      message = `${prefix}🎉 ${winnerNickname} acertou: ${reveal.revealedWord}`;
+    } else if (reveal.reason === 'timeout') {
+      message = `${prefix}⏰ Tempo esgotado! A palavra era: ${reveal.revealedWord}`;
+    } else {
+      message = `${prefix}❌ Tentativas esgotadas! A palavra era: ${reveal.revealedWord}`;
+    }
+    show(message, reveal.reason === 'solved' ? 'success' : 'warning', 4000);
+  }, [reveal, show]);
+
+  useEffect(() => {
+    if (error) show(error, 'error');
+  }, [error, show]);
+
+  useEffect(() => {
+    if (extraAttempts) show('Ninguém acertou — cada jogador recebe mais 2 tentativas!', 'warning', 5000);
+  }, [extraAttempts, show]);
+
+  // Winner announcement fires 4.5 s after the game ends so it doesn't clash
+  // with the reveal banner that's still visible at that moment.
+  useEffect(() => {
+    if (!finished) return;
+    const names = finished.winnerIds
+      .map((id) => playersRef.current.find((p) => p.playerId === id)?.nickname ?? 'Alguém')
+      .join(', ');
+    const t = setTimeout(() => show(`🏆 ${names} venceu o jogo!`, 'gold', 5000), 4500);
+    return () => clearTimeout(t);
+  }, [finished, show]);
+
+  // Persistent fallback: countdown updates in-place (no re-animation on each tick).
+  const persistentBanner = useMemo(() => {
+    if (countdown !== null) {
+      return { message: `Nova partida em ${countdown}…`, type: 'warning' as const };
+    }
+    if (isTieBreakSpectator) {
+      return { message: '👀 Você não está no desempate — aguarde o resultado.', type: 'warning' as const };
+    }
+    return null;
+  }, [countdown, isTieBreakSpectator]);
+
   return (
     <div id="championship-room" className="app-shell">
       <header id="championship-header" className="app-header">
@@ -241,39 +304,12 @@ function ChampionshipGameRoom({
 
       <main id="championship-main" className="app-main app-main-with-keyboard">
         {round && !finished && <RoundStatus round={round} myAttemptsCount={myAttempts.length} />}
+        <BannerSlot id="championship-banner-slot" banner={eventBanner} fallback={persistentBanner} />
 
-        {finished && (
-          <p className="banner banner-gold">
-            🏆{' '}
-            {finished.winnerIds
-              .map((winnerId) => players.find((player) => player.playerId === winnerId)?.nickname ?? 'Alguém')
-              .join(', ')}{' '}
-            venceu o jogo!
-          </p>
-        )}
-        {countdown !== null && (
-          <p className="banner banner-warning">
-            Nova partida em {countdown}…
-          </p>
-        )}
-        {reveal && <WordRevealBanner reveal={reveal} players={players} />}
-        {isTieBreakSpectator && (
-          <p className="banner banner-warning">👀 Você não está no desempate — aguarde o resultado.</p>
-        )}
-        {extraAttempts && (
-          <p className="banner banner-warning">Ninguém acertou — cada jogador recebe mais 2 tentativas!</p>
-        )}
-        {isRoundOver && !finished && (
-          <p className="banner banner-success">
-            🎉 {players.find((player) => player.playerId === solvedBy)?.nickname ?? 'Alguém'} acertou a palavra!
-          </p>
-        )}
-        {error && <p className="banner banner-error">{error}</p>}
-
-        <section id="championship-board-section" className="game-board-section">
-          <div id="championship-other-players" className="other-players-column">
+        <section id="championship-board-section" className="game-layout">
+          <div id="championship-other-players" className="other-players-panel">
             <h2>Outros jogadores</h2>
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div id="championship-other-players-list" className="other-players-list">
               {otherPlayers.map((player) => (
                 <PlayerBoard
                   key={player.playerId}
@@ -287,8 +323,9 @@ function ChampionshipGameRoom({
             </div>
           </div>
 
-          <div id="championship-my-word" className="my-word-column">
+          <div id="championship-my-word" className="game-center">
             <WordGrid
+              gridId="my-word"
               wordLength={wordLength}
               attempts={myAttempts}
               activeGuess={canGuess ? guessInput.letters : undefined}
@@ -298,16 +335,18 @@ function ChampionshipGameRoom({
             />
           </div>
 
-          <ScoreBoard
-            players={players}
-            scores={scores}
-            tieBreakCandidates={round?.tieBreakCandidates ?? null}
-            ownPlayerId={playerId}
-          />
+          <div id="championship-aside" className="game-aside">
+            <ScoreBoard
+              players={players}
+              scores={scores}
+              tieBreakCandidates={round?.tieBreakCandidates ?? null}
+              ownPlayerId={playerId}
+            />
+          </div>
         </section>
       </main>
 
-      <div className="keyboard-footer">
+      <div id="championship-keyboard-footer" className="keyboard-footer">
         <Keyboard
           attempts={myAttempts}
           onLetter={guessInput.typeLetter}
@@ -429,10 +468,10 @@ function RaceGameRoom({
           <p className="banner banner-warning">👀 Você terminou todas as palavras — aguarde o fim da corrida.</p>
         )}
 
-        <section id="race-board-section" className="game-board-section">
-          <div id="race-other-players" className="other-players-column">
+        <section id="race-board-section" className="game-layout">
+          <div id="race-other-players" className="other-players-panel">
             <h2>Outros jogadores</h2>
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <div id="race-other-players-list" className="other-players-list">
               {otherPlayers.map((player) => (
                 <PlayerBoard
                   key={player.playerId}
@@ -446,8 +485,9 @@ function RaceGameRoom({
             </div>
           </div>
 
-          <div id="race-my-word" className="my-word-column">
+          <div id="race-my-word" className="game-center">
             <WordGrid
+              gridId="my-word"
               wordLength={wordLength}
               attempts={myAttempts}
               activeGuess={canGuess ? guessInput.letters : undefined}
@@ -457,11 +497,13 @@ function RaceGameRoom({
             />
           </div>
 
-          {config && <RaceLeaderboard players={players} progress={progress} wordCount={config.wordCount} ownPlayerId={playerId} />}
+          <div id="race-aside" className="game-aside">
+            {config && <RaceLeaderboard players={players} progress={progress} wordCount={config.wordCount} ownPlayerId={playerId} />}
+          </div>
         </section>
       </main>
 
-      <div className="keyboard-footer">
+      <div id="race-keyboard-footer" className="keyboard-footer">
         <Keyboard
           attempts={myAttempts}
           onLetter={guessInput.typeLetter}
@@ -488,8 +530,8 @@ function WinnerModal({ winnerName, onDismiss }: { winnerName: string | null; onD
   }, [onDismiss]);
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-card">
+    <div id="winner-modal-overlay" className="modal-overlay">
+      <div id="winner-modal-card" className="modal-card">
         <p className="modal-title">
           {winnerName ? `🏆 ${winnerName} venceu a corrida!` : '🏁 Corrida encerrada'}
         </p>

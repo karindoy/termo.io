@@ -16,7 +16,7 @@ export function ScoreBoard({ players, scores, tieBreakCandidates, ownPlayerId }:
       {ranked.map((player) => {
         const isTieBreakCandidate = tieBreakCandidates?.includes(player.playerId) ?? false;
         return (
-          <div key={player.playerId} className={['row-item', player.playerId === ownPlayerId ? 'is-self' : ''].join(' ').trim()}>
+          <div key={player.playerId} id={`scoreboard-player-${player.playerId}`} className={['row-item', player.playerId === ownPlayerId ? 'is-self' : ''].join(' ').trim()}>
             <span>
               {tieBreakCandidates ? (isTieBreakCandidate ? '⚔️ ' : '👀 ') : ''}
               {player.nickname}

@@ -20,7 +20,7 @@ export function RoundStatus({ round, myAttemptsCount }: RoundStatusProps) {
   const seconds = remainingSeconds % 60;
 
   return (
-    <div className="card status-card" style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div id="round-status" className="card status-card" style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
       <span>{round.phase === 'tie-break' ? 'Desempate' : `Palavra ${round.wordIndex + 1} de ${round.wordCount}`}</span>
       <span style={{ fontVariantNumeric: 'tabular-nums' }}>
         ⏱ {minutes}:{seconds.toString().padStart(2, '0')}

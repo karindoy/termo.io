@@ -20,7 +20,7 @@ export function RaceStatus({ config, progress }: RaceStatusProps) {
   const seconds = remainingSeconds % 60;
 
   return (
-    <div className="card status-card" style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div id="race-status" className="card status-card" style={{ flexDirection: 'row', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
       <span>
         Palavra {Math.min(progress.wordIndex + 1, config.wordCount)} de {config.wordCount}
       </span>

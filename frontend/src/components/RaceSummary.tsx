@@ -8,7 +8,7 @@ interface RaceSummaryProps {
 
 export function RaceSummary({ revealHistory, players }: RaceSummaryProps) {
   return (
-    <div className="card">
+    <div id="race-summary" className="card">
       <h2>Palavras da corrida</h2>
       <ul className="row-list">
         {revealHistory.map((reveal, index) => {

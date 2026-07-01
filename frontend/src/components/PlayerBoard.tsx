@@ -9,10 +9,11 @@ interface PlayerBoardProps {
 }
 
 export function PlayerBoard({ nickname, wordLength, attempts, totalRows }: PlayerBoardProps) {
+  const slug = nickname.toLowerCase().replace(/\W+/g, '-');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div id={`player-board-${slug}`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <strong style={{ color: 'var(--color-text-muted)' }}>{nickname}</strong>
-      <WordGrid wordLength={wordLength} attempts={attempts} totalRows={totalRows} />
+      <WordGrid gridId={`player-grid-${slug}`} wordLength={wordLength} attempts={attempts} totalRows={totalRows} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ const STATUS_COLOR: Record<LetterStatus, string> = {
 };
 
 interface WordGridProps {
+  gridId?: string;
   wordLength: number;
   attempts: Attempt[];
   /** Fixed-length array, one entry per cell ('' = empty), for the in-progress row. */
@@ -29,6 +30,7 @@ interface WordGridProps {
 }
 
 export function WordGrid({
+  gridId,
   wordLength,
   attempts,
   activeGuess,
@@ -57,18 +59,20 @@ export function WordGrid({
   while (rows.length < targetLength) rows.push(undefined);
 
   return (
-    <div className="word-grid">
+    <div id={gridId} className="word-grid">
       {rows.map((row, rowIndex) => (
-        <div key={rowIndex} className="word-row">
+        <div key={rowIndex} id={gridId ? `${gridId}-r${rowIndex}` : undefined} className="word-row">
           {Array.from({ length: wordLength }).map((_, columnIndex) => {
+            const tileId = gridId ? `${gridId}-r${rowIndex}-c${columnIndex}` : undefined;
             if (row === undefined) {
-              return <Tile key={columnIndex} letter="" />;
+              return <Tile key={columnIndex} id={tileId} letter="" />;
             }
             if (row === null) {
               const letter = activeGuess?.[columnIndex] ?? '';
               return (
                 <Tile
                   key={columnIndex}
+                  id={tileId}
                   letter={letter}
                   isTyping={activeLastEdited === columnIndex}
                   isCursor={activeCursor === columnIndex}
@@ -81,6 +85,7 @@ export function WordGrid({
             return (
               <Tile
                 key={columnIndex}
+                id={tileId}
                 letter={letterFeedback?.letter ?? ''}
                 status={letterFeedback?.status}
                 isFlipping={isFlipping}
@@ -95,6 +100,7 @@ export function WordGrid({
 }
 
 function Tile({
+  id,
   letter,
   status,
   isFlipping,
@@ -103,6 +109,7 @@ function Tile({
   delay,
   onClick,
 }: {
+  id?: string;
   letter: string;
   status?: LetterStatus;
   isFlipping?: boolean;
@@ -121,6 +128,7 @@ function Tile({
 
   return (
     <div
+      id={id}
       className={classNames.join(' ')}
       style={
         isFlipping && status

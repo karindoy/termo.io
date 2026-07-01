@@ -58,6 +58,7 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 800;
+  align-items: center
 }
 
 .app-main {
@@ -202,22 +203,71 @@ label.field {
 /* Game board layout */
 
 .app-main-with-keyboard {
-  padding-bottom: 240px;
+  padding-bottom: 220px;
 }
 
-.game-board-section {
+.game-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.game-center {
   display: flex;
-  gap: 32px;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-aside {
+  min-width: 0;
+}
+
+.other-players-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.other-players-panel h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin: 0 0 4px;
+}
+
+.other-players-list {
+  display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
 }
 
-.other-players-column {
-  flex: 1 1 auto;
+.other-players-list>* {
+  max-width: 200px;
+  min-width: 0;
 }
 
-.my-word-column {
-  flex: 0 0 auto;
+/* Mini tiles inside the other-players sidebar */
+.other-players-panel .tile {
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+  border-width: 1px;
+  border-radius: 2px;
+}
+
+.other-players-panel .word-row {
+  gap: 3px;
+}
+
+.other-players-panel .word-grid {
+  gap: 3px;
 }
 
 /* Fixed keyboard footer */
@@ -272,6 +322,34 @@ label.field {
 }
 
 /* Status / banners */
+
+.banner-slot {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.banner-slot .banner {
+  margin: 0;
+  width: 100%;
+}
+
+.banner-animated {
+  animation: banner-in 0.2s ease-out both;
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .status-pill {
   font-size: 0.8rem;
@@ -425,9 +503,11 @@ label.field {
   0% {
     transform: scale(1);
   }
+
   40% {
     transform: scale(1.12);
   }
+
   100% {
     transform: scale(1);
   }
@@ -439,16 +519,19 @@ label.field {
     border-color: var(--tile-border-filled);
     transform: perspective(200px) rotateX(0deg);
   }
+
   49.99999% {
     background-color: transparent;
     border-color: var(--tile-border-filled);
     transform: perspective(200px) rotateX(90deg);
   }
+
   50% {
     background-color: var(--tile-color);
     border-color: var(--tile-color);
     transform: perspective(200px) rotateX(-90deg);
   }
+
   100% {
     background-color: var(--tile-color);
     border-color: var(--tile-color);
@@ -457,16 +540,45 @@ label.field {
 }
 
 @keyframes shake {
-  10% { transform: translateX(-10px); }
-  20% { transform: translateX(10px); }
-  30% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  50% { transform: translateX(-3px); }
-  60% { transform: translateX(3px); }
-  70% { transform: translateX(-2px); }
-  80% { transform: translateX(2px); }
-  90% { transform: translateX(-1px); }
-  100% { transform: translateX(1px); }
+  10% {
+    transform: translateX(-10px);
+  }
+
+  20% {
+    transform: translateX(10px);
+  }
+
+  30% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  50% {
+    transform: translateX(-3px);
+  }
+
+  60% {
+    transform: translateX(3px);
+  }
+
+  70% {
+    transform: translateX(-2px);
+  }
+
+  80% {
+    transform: translateX(2px);
+  }
+
+  90% {
+    transform: translateX(-1px);
+  }
+
+  100% {
+    transform: translateX(1px);
+  }
 }
 
 /* Keyboard */
@@ -486,15 +598,15 @@ label.field {
 }
 
 .key {
-  min-width: 32px;
-  height: 44px;
-  padding: 0 10px;
+  min-width: 43px;
+  height: 58px;
+  padding: 0 8px;
   background: var(--key-default);
   color: #fff;
   border: none;
   border-radius: 6px;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   text-transform: uppercase;
   cursor: pointer;
   transition: filter 0.15s, transform 0.1s;
@@ -509,7 +621,15 @@ label.field {
 }
 
 .key-wide {
-  padding: 0 18px;
+  padding: 0 12px;
+  min-width: 65px;
+  font-size: 0.8rem;
+}
+
+.key-enter {
+  min-width: 87px;
+  font-size: 1.07rem;
+  padding: 0 35px;
 }
 
 .key-correct {

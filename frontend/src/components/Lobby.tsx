@@ -45,7 +45,7 @@ export function Lobby({
   }
 
   return (
-    <div className="centered-shell" style={{ maxWidth: 480 }}>
+    <div id="lobby-shell" className="centered-shell" style={{ maxWidth: 480 }}>
       <header className="app-header" style={{ borderRadius: 8, border: '1px solid var(--color-border)' }}>
         <h1>Sala {room.code}</h1>
         <span className="status-pill">{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
@@ -123,7 +123,7 @@ export function Lobby({
         </label>
       </section>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div id="lobby-actions" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         {isHost ? (
           <button className="btn btn-primary" disabled={!connected} onClick={startGame}>
             Iniciar partida

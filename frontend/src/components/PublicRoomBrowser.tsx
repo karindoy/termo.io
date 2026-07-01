@@ -25,7 +25,7 @@ export function PublicRoomBrowser({ onJoin }: { onJoin: (code: string) => void }
 
   return (
     <section className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div id="public-rooms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Salas públicas</h2>
         <button className="btn btn-ghost btn-sm" disabled={loading} onClick={refresh}>
           Atualizar
