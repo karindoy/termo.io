@@ -3,6 +3,7 @@ import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
 import type {
   Attempt,
+  CountdownStartedPayload,
   RaceGuessResult,
   Player,
   PlayerProgressSnapshot,
@@ -16,6 +17,7 @@ import type {
 
 export interface RaceRevealInfo {
   playerId: string;
+  wordIndex: number;
   revealedWord: string;
   reason: PlayerWordResolvedPayload['reason'];
   playerWon: boolean;
@@ -25,6 +27,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
   const wordIndexRef = useRef<Record<string, number>>({});
   const sessionSecretRef = useRef<string | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [config, setConfig] = useState<RaceConfigSnapshot | null>(null);
@@ -33,6 +36,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
   const [attemptsByPlayer, setAttemptsByPlayer] = useState<Record<string, Attempt[]>>({});
   const [revealHistory, setRevealHistory] = useState<RaceRevealInfo[]>([]);
   const [finished, setFinished] = useState<RaceFinishedPayload | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   function setProgressEntry(entry: PlayerProgressSnapshot): void {
     wordIndexRef.current[entry.playerId] = entry.wordIndex;
@@ -40,6 +44,13 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
   }
 
   useEffect(() => {
+    function clearCountdownInterval(): void {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    }
+
     const socket = createSocket('race');
     socketRef.current = socket;
 
@@ -62,6 +73,22 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
       wordIndexRef.current = Object.fromEntries(state.progress.map((entry) => [entry.playerId, entry.wordIndex]));
       setFinished(state.phase === 'finished' ? { winnerId: state.winnerId } : null);
       setRevealHistory([]);
+      clearCountdownInterval();
+      setCountdown(null);
+    });
+
+    socket.on('room:countdown:started', (payload: CountdownStartedPayload) => {
+      clearCountdownInterval();
+      setCountdown(payload.seconds);
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearCountdownInterval();
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     });
 
     socket.on('room:players', (incomingPlayers: Player[]) => setPlayers(incomingPlayers));
@@ -84,6 +111,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
         ...prev,
         {
           playerId: result.playerId,
+          wordIndex: result.wordIndex,
           revealedWord: result.revealedWord,
           reason: result.reason,
           playerWon: result.playerWon,
@@ -102,6 +130,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     });
 
     return () => {
+      clearCountdownInterval();
       socket.disconnect();
     };
   }, [code, playerId, nickname]);
@@ -134,6 +163,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     revealHistory,
     sessionStats,
     finished,
+    countdown,
     submitGuess,
     restartGame,
   };

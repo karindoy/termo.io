@@ -43,6 +43,12 @@ export interface RoomSessionPayload {
   sessionSecret: string;
 }
 
+export interface CountdownStartedPayload {
+  code: string;
+  seconds: number;
+  reason: 'start' | 'restart';
+}
+
 export type LetterStatus = 'correct' | 'present' | 'absent';
 
 export interface LetterFeedback {

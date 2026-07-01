@@ -29,8 +29,10 @@ function clampIndex(index: number, wordLength: number): number {
 }
 
 /** Cursor-addressable fixed-length guess buffer: arrow keys / cell clicks reposition the
- * cursor, so a letter can be typed/edited at any position, not just appended at the end. */
-export function useGuessInput(wordLength: number, enabled: boolean): UseGuessInputResult {
+ * cursor, so a letter can be typed/edited at any position, not just appended at the end.
+ * `resetKey` should change whenever the word to guess changes (e.g. round sequence /
+ * word index) so leftover letters from the previous word don't linger in the row. */
+export function useGuessInput(wordLength: number, enabled: boolean, resetKey?: unknown): UseGuessInputResult {
   const [state, setState] = useState<GuessInputState>(() => ({
     letters: emptyLetters(wordLength),
     cursor: 0,
@@ -39,7 +41,7 @@ export function useGuessInput(wordLength: number, enabled: boolean): UseGuessInp
 
   useEffect(() => {
     setState({ letters: emptyLetters(wordLength), cursor: 0, lastEdited: null });
-  }, [wordLength]);
+  }, [wordLength, resetKey]);
 
   function typeLetter(letter: string): void {
     if (!enabled) return;

@@ -6,12 +6,11 @@ import { useBanner } from './hooks/useBanner';
 import { WordGrid } from './components/WordGrid';
 import { Keyboard } from './components/Keyboard';
 import { PlayerBoard } from './components/PlayerBoard';
-import { ScoreBoard } from './components/ScoreBoard';
 import { RoundStatus } from './components/RoundStatus';
 import { BannerSlot } from './components/BannerSlot';
 import { RaceStatus } from './components/RaceStatus';
-import { RaceLeaderboard } from './components/RaceLeaderboard';
-import { RaceSummary } from './components/RaceSummary';
+import { PlacarModal, type PlacarWordRow } from './components/PlacarModal';
+import { CountdownDisplay } from './components/CountdownDisplay';
 import { Lobby } from './components/Lobby';
 import { PublicRoomBrowser } from './components/PublicRoomBrowser';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
@@ -147,8 +146,6 @@ function RoomChoiceScreen({
   );
 }
 
-const RESTART_COUNTDOWN_SECS = 15;
-
 function ChampionshipGameRoom({
   code,
   playerId,
@@ -162,30 +159,15 @@ function ChampionshipGameRoom({
   isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, players, scores, attempts, solvedBy, round, reveal, finished, error, extraAttempts, playerStats, submitGuess, restartGame } = useGame(
+  const { connected, players, attempts, solvedBy, round, reveal, finished, error, extraAttempts, playerStats, wordHistory, countdown, submitGuess, restartGame } = useGame(
     code,
     playerId,
     nickname,
   );
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [placarDismissed, setPlacarDismissed] = useState(false);
 
   useEffect(() => {
-    if (!finished) {
-      setCountdown(null);
-      return;
-    }
-    setCountdown(RESTART_COUNTDOWN_SECS);
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          if (isHost) restartGame();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
+    if (!finished) setPlacarDismissed(false);
   }, [finished]);
 
   const wordLength = round?.wordLength ?? 5;
@@ -198,7 +180,7 @@ function ChampionshipGameRoom({
   const isAttemptsExhausted = round != null && myAttempts.length >= round.maxAttempts;
   const canGuess = !finished && round != null && !isTieBreakSpectator && !isRoundOver && !isAttemptsExhausted;
 
-  const guessInput = useGuessInput(wordLength, canGuess);
+  const guessInput = useGuessInput(wordLength, canGuess, round?.roundSequence);
 
   function handleEnter(): void {
     if (!canGuess || !guessInput.isComplete) return;
@@ -267,27 +249,38 @@ function ChampionshipGameRoom({
     if (extraAttempts) show('Ninguém acertou — cada jogador recebe mais 2 tentativas!', 'warning', 5000);
   }, [extraAttempts, show]);
 
-  // Winner announcement fires 4.5 s after the game ends so it doesn't clash
-  // with the reveal banner that's still visible at that moment.
-  useEffect(() => {
-    if (!finished) return;
-    const names = finished.winnerIds
-      .map((id) => playersRef.current.find((p) => p.playerId === id)?.nickname ?? 'Alguém')
-      .join(', ');
-    const t = setTimeout(() => show(`🏆 ${names} venceu o jogo!`, 'gold', 5000), 4500);
-    return () => clearTimeout(t);
-  }, [finished, show]);
-
   // Persistent fallback: countdown updates in-place (no re-animation on each tick).
   const persistentBanner = useMemo(() => {
-    if (countdown !== null) {
-      return { message: `Nova partida em ${countdown}…`, type: 'warning' as const };
-    }
     if (isTieBreakSpectator) {
       return { message: '👀 Você não está no desempate — aguarde o resultado.', type: 'warning' as const };
     }
     return null;
-  }, [countdown, isTieBreakSpectator]);
+  }, [isTieBreakSpectator]);
+
+  const placarHeadline = finished
+    ? `🏆 ${finished.winnerIds.map((id) => players.find((p) => p.playerId === id)?.nickname ?? 'Alguém').join(', ')} venceu!`
+    : '';
+
+  const placarRows = useMemo<PlacarWordRow[]>(
+    () =>
+      wordHistory.map((entry, index) => {
+        const statusByPlayer: PlacarWordRow['statusByPlayer'] = {};
+        for (const player of players) {
+          if (entry.tieBreakCandidates && !entry.tieBreakCandidates.includes(player.playerId)) {
+            statusByPlayer[player.playerId] = 'pending';
+          } else {
+            statusByPlayer[player.playerId] = entry.winnerId === player.playerId ? 'hit' : 'miss';
+          }
+        }
+        return {
+          key: `${entry.wordIndex}-${index}`,
+          label: entry.isTieBreak ? 'Desempate' : `Palavra ${entry.wordIndex + 1}`,
+          word: entry.word,
+          statusByPlayer,
+        };
+      }),
+    [wordHistory, players],
+  );
 
   return (
     <div id="championship-room" className="app-shell">
@@ -339,14 +332,7 @@ function ChampionshipGameRoom({
             />
           </div>
 
-          <div id="championship-aside" className="game-aside">
-            <ScoreBoard
-              players={players}
-              scores={scores}
-              tieBreakCandidates={round?.tieBreakCandidates ?? null}
-              ownPlayerId={playerId}
-            />
-          </div>
+          <div id="championship-aside" className="game-aside" />
         </section>
       </main>
 
@@ -359,8 +345,40 @@ function ChampionshipGameRoom({
           disabled={!canGuess}
         />
       </div>
+
+      {finished && !placarDismissed && (
+        <PlacarModal
+          headline={placarHeadline}
+          players={players}
+          rows={placarRows}
+          footer={<RestartFooter isHost={isHost} countdown={countdown} onRestart={restartGame} />}
+          onDismiss={() => setPlacarDismissed(true)}
+        />
+      )}
     </div>
   );
+}
+
+function RestartFooter({
+  isHost,
+  countdown,
+  onRestart,
+}: {
+  isHost: boolean;
+  countdown: number | null;
+  onRestart: () => void;
+}) {
+  if (countdown !== null) {
+    return <CountdownDisplay seconds={countdown} label="Nova partida em" />;
+  }
+  if (isHost) {
+    return (
+      <button className="btn btn-primary" onClick={onRestart}>
+        Iniciar partida
+      </button>
+    );
+  }
+  return <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>Aguardando o host iniciar a nova partida…</p>;
 }
 
 function RaceGameRoom({
@@ -376,29 +394,12 @@ function RaceGameRoom({
   isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, config, players, progress, attemptsByPlayer, revealHistory, sessionStats, finished, submitGuess, restartGame } =
+  const { connected, config, players, progress, attemptsByPlayer, revealHistory, sessionStats, finished, countdown, submitGuess, restartGame } =
     useRaceGame(code, playerId, nickname);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [winnerModalDismissed, setWinnerModalDismissed] = useState(false);
+  const [placarDismissed, setPlacarDismissed] = useState(false);
 
   useEffect(() => {
-    if (!finished) {
-      setCountdown(null);
-      setWinnerModalDismissed(false);
-      return;
-    }
-    setCountdown(RESTART_COUNTDOWN_SECS);
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(interval);
-          if (isHost) restartGame();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
+    if (!finished) setPlacarDismissed(false);
   }, [finished]);
 
   const wordLength = config?.wordLength ?? 5;
@@ -407,10 +408,36 @@ function RaceGameRoom({
   const otherPlayers = useMemo(() => players.filter((player) => player.playerId !== playerId), [players, playerId]);
 
   const canGuess = connected && config != null && myProgress != null && !myProgress.finished && !finished;
-  const showWinnerModal = finished !== null && !winnerModalDismissed;
-  const showSummary = finished !== null && winnerModalDismissed;
 
-  const guessInput = useGuessInput(wordLength, canGuess);
+  const guessInput = useGuessInput(wordLength, canGuess, myProgress?.wordIndex);
+
+  const placarHeadline = finished
+    ? finished.winnerId
+      ? `🏆 ${players.find((player) => player.playerId === finished.winnerId)?.nickname ?? 'Alguém'} venceu a corrida!`
+      : '🏁 Corrida encerrada — ninguém acertou todas as palavras.'
+    : '';
+
+  const placarRows = useMemo<PlacarWordRow[]>(() => {
+    if (!config) return [];
+    const rows: PlacarWordRow[] = [];
+    for (let wordIndex = 0; wordIndex < config.wordCount; wordIndex += 1) {
+      const entriesForWord = revealHistory.filter((entry) => entry.wordIndex === wordIndex);
+      const firstEntry = entriesForWord[0];
+      if (!firstEntry) continue;
+      const statusByPlayer: PlacarWordRow['statusByPlayer'] = {};
+      for (const player of players) {
+        const entry = entriesForWord.find((candidate) => candidate.playerId === player.playerId);
+        statusByPlayer[player.playerId] = !entry ? 'pending' : entry.reason === 'solved' ? 'hit' : 'miss';
+      }
+      rows.push({
+        key: String(wordIndex),
+        label: `Palavra ${wordIndex + 1}`,
+        word: firstEntry.revealedWord,
+        statusByPlayer,
+      });
+    }
+    return rows;
+  }, [revealHistory, players, config]);
 
   function handleEnter(): void {
     if (!canGuess || !guessInput.isComplete) return;
@@ -453,21 +480,6 @@ function RaceGameRoom({
       <main id="race-main" className="app-main app-main-with-keyboard">
         {config && myProgress && !finished && <RaceStatus config={config} progress={myProgress} />}
 
-        {showSummary && (
-          <>
-            <p className="banner banner-gold">
-              {finished!.winnerId
-                ? `🏆 ${players.find((player) => player.playerId === finished!.winnerId)?.nickname ?? 'Alguém'} venceu a corrida!`
-                : '🏁 Corrida encerrada — ninguém acertou todas as palavras.'}
-            </p>
-            {countdown !== null && (
-              <p className="banner banner-warning">
-                Nova partida em {countdown}…
-              </p>
-            )}
-            <RaceSummary revealHistory={revealHistory} players={players} />
-          </>
-        )}
         {myProgress?.finished && !finished && (
           <p className="banner banner-warning">👀 Você terminou todas as palavras — aguarde o fim da corrida.</p>
         )}
@@ -505,9 +517,7 @@ function RaceGameRoom({
             />
           </div>
 
-          <div id="race-aside" className="game-aside">
-            {config && <RaceLeaderboard players={players} progress={progress} wordCount={config.wordCount} ownPlayerId={playerId} />}
-          </div>
+          <div id="race-aside" className="game-aside" />
         </section>
       </main>
 
@@ -521,32 +531,15 @@ function RaceGameRoom({
         />
       </div>
 
-      {showWinnerModal && (
-        <WinnerModal
-          winnerName={finished!.winnerId ? (players.find((p) => p.playerId === finished!.winnerId)?.nickname ?? 'Alguém') : null}
-          onDismiss={() => setWinnerModalDismissed(true)}
+      {finished && !placarDismissed && (
+        <PlacarModal
+          headline={placarHeadline}
+          players={players}
+          rows={placarRows}
+          footer={<RestartFooter isHost={isHost} countdown={countdown} onRestart={restartGame} />}
+          onDismiss={() => setPlacarDismissed(true)}
         />
       )}
-    </div>
-  );
-}
-
-function WinnerModal({ winnerName, onDismiss }: { winnerName: string | null; onDismiss: () => void }) {
-  useEffect(() => {
-    const timer = setTimeout(onDismiss, 4000);
-    return () => clearTimeout(timer);
-  }, [onDismiss]);
-
-  return (
-    <div id="winner-modal-overlay" className="modal-overlay">
-      <div id="winner-modal-card" className="modal-card">
-        <p className="modal-title">
-          {winnerName ? `🏆 ${winnerName} venceu a corrida!` : '🏁 Corrida encerrada'}
-        </p>
-        <button className="btn btn-primary" onClick={onDismiss}>
-          Ver resultados
-        </button>
-      </div>
     </div>
   );
 }

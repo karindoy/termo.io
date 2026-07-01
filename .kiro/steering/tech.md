@@ -48,7 +48,7 @@ backend/
 
 frontend/
 ├── src/
-│   ├── components/            # WordGrid, Keyboard, Lobby, PlayerBoard, ScoreBoard, RaceLeaderboard
+│   ├── components/            # WordGrid, Keyboard, Lobby, PlayerBoard, PlacarModal
 │   ├── hooks/                 # useSocket, useRoom, useGame
 │   ├── pages/                 # Home, CreateRoom, JoinRoom, GameRoom
 │   └── lib/                   # socket client setup, api client
@@ -116,6 +116,7 @@ Root: `package.json` (npm workspaces: `backend`, `frontend`), `CODING_STANDARDS.
       - *Championship*: sourced from `playerStats` in `useGame` — incremented once per resolved word for every player in the room simultaneously: the word's winner gets `+1 correct`, everyone else gets `+1 wrong`.
       - *Race*: sourced from `sessionStats` (derived from `revealHistory`) in `useRaceGame` — one entry is appended per player per word as each player individually finishes it (`player:word-resolved`); `reason === 'solved'` → `+1 correct`, otherwise `+1 wrong`. These tallies update live for every player throughout the race — unlike the round-status/banner UI, which is deliberately hidden until the end-of-race summary.
 - **Word input (cursor-based)**: active row tracks a cursor position. Arrow-key and click/tap navigation move the cursor; typing inserts/overwrites at that position. Letter correctness is always server-computed.
+  - **`hooks/useGuessInput.ts`**: owns the active row's letter buffer/cursor, independent of `WordGrid`. Its internal reset effect keys on `[wordLength, resetKey]` — `wordLength` alone doesn't change between rounds (always 5), so callers **must** pass a `resetKey` that changes every time the target word advances (Championship: `round.roundSequence`; Race: the player's own `wordIndex`), otherwise leftover letters/cursor position from the previous word persist into the new row.
 - **Keyboard (`components/Keyboard.tsx`)**: on-screen QWERTY layout, 3 rows (`QWERTYUIOP` / `ASDFGHJKL` / `ZXCVBNM`), no accented keys — accent-insensitive matching means only plain letters are ever needed. Wide `Backspace` key on row 2, wide `Enviar` (submit) key on row 3. Each key is colored by the best-known status for that letter across all of the player's attempts so far (`correct` > `present` > `absent` priority; unplayed letters are unstyled). Physical keyboard input is supported in parallel: plain `a`-`z` types a letter, `Enter` submits, `Backspace` deletes, `ArrowLeft`/`ArrowRight` move the cursor — wired via a `window` `keydown` listener, not the on-screen `<button>`s. The keyboard is permanently anchored to the bottom of the screen across all game modes and screen sizes.
 - **Styling**: Tailwind CSS or CSS Modules — pick one, don't mix.
 

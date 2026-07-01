@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLobby } from '../hooks/useLobby';
+import { CountdownDisplay } from './CountdownDisplay';
 import type { RoomRecord, RoomSettings } from '../lib/types';
 
 export function Lobby({
@@ -15,7 +16,7 @@ export function Lobby({
   onGameStart: (room: RoomRecord) => void;
   onBack: () => void;
 }) {
-  const { connected, room, gameStarted, hostMigratedTo, error, updateSettings, startGame, leaveRoom } = useLobby(
+  const { connected, room, gameStarted, hostMigratedTo, error, countdown, updateSettings, startGame, leaveRoom } = useLobby(
     initialRoom,
     playerId,
     nickname,
@@ -125,16 +126,22 @@ export function Lobby({
 
       <div id="lobby-actions" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         {isHost ? (
-          <button className="btn btn-primary" disabled={!connected} onClick={startGame}>
+          <button className="btn btn-primary" disabled={!connected || countdown !== null} onClick={startGame}>
             Iniciar partida
           </button>
         ) : (
           <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>Aguardando o host iniciar a partida…</p>
         )}
-        <button className="btn btn-ghost" onClick={handleLeave}>
+        <button className="btn btn-ghost" onClick={handleLeave} disabled={countdown !== null}>
           Sair da sala
         </button>
       </div>
+
+      {countdown !== null && (
+        <div id="lobby-countdown-overlay" className="modal-overlay">
+          <CountdownDisplay seconds={countdown} label="Iniciando partida em" />
+        </div>
+      )}
     </div>
   );
 }

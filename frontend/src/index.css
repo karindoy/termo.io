@@ -321,6 +321,95 @@ label.field {
   color: var(--color-text);
 }
 
+/* Placar modal (end-of-game word x player breakdown) */
+
+.modal-card-large {
+  width: 50vw;
+  height: 80vh;
+  max-width: none;
+  max-height: none;
+}
+
+.placar-table-wrapper {
+  width: 100%;
+  flex: 1;
+  overflow: auto;
+}
+
+.placar-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.placar-table th,
+.placar-table td {
+  padding: 8px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.placar-table th:first-child,
+.placar-table td:first-child {
+  text-align: left;
+}
+
+.placar-cell-hit {
+  color: var(--color-correct);
+  font-weight: 700;
+}
+
+.placar-cell-miss {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.placar-cell-pending {
+  color: var(--color-text-muted);
+}
+
+/* Big animated countdown (pre-start / pre-rematch) */
+
+.countdown-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.countdown-label {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.countdown-number {
+  font-size: 7rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--color-gold);
+  animation: countdown-pulse 1s ease-out;
+}
+
+@keyframes countdown-pulse {
+  0% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* Status / banners */
 
 .banner-slot {

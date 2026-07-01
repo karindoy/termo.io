@@ -19,6 +19,7 @@ import {
 } from '../dto/guess-payload.js';
 import { redactAttempt } from '../dto/redact-attempt.js';
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
+import { runWithCountdown } from './room-countdown.js';
 
 export function registerRaceModeHandlers(
   io: Namespace,
@@ -156,13 +157,25 @@ export function registerRaceModeHandlers(
       }
       if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
-      try {
-        const record = await startGame(joinRoomDeps, parsed.data);
-        io.to(parsed.data.code).emit('game:start', record);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Erro desconhecido';
-        socket.emit('room:error', { message });
+      const record = await joinRoomDeps.roomRepository.findByCode(parsed.data.code);
+      if (!record) {
+        socket.emit('room:error', { message: `Sala "${parsed.data.code}" não encontrada` });
+        return;
       }
+      if (record.hostId !== parsed.data.playerId) {
+        socket.emit('room:error', { message: 'Somente o host pode iniciar a partida' });
+        return;
+      }
+
+      runWithCountdown(io, parsed.data.code, 'start', async () => {
+        try {
+          const startedRecord = await startGame(joinRoomDeps, parsed.data);
+          io.to(parsed.data.code).emit('game:start', startedRecord);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Erro desconhecido';
+          socket.emit('room:error', { message });
+        }
+      });
     });
 
     socket.on('room:restart', async (rawPayload: unknown) => {
@@ -172,24 +185,36 @@ export function registerRaceModeHandlers(
         return;
       }
 
-      try {
-        const { gameMode } = await restartRoom(restartRoomDeps, parsed.data);
-        const raceMode = gameMode as RaceMode;
-        const room = raceMode.getRoom();
-        const game = raceMode.getGame();
-        const playerIds = Array.from(room.players.keys());
-        io.to(parsed.data.code).emit('room:state', {
-          ...raceMode.configSnapshot(),
-          players: Array.from(room.players.values()),
-          progress: game.progressSummary(),
-          attemptsByPlayer: Object.fromEntries(playerIds.map((id) => [id, []])),
-          phase: game.phase,
-          winnerId: game.winnerId,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Erro desconhecido';
-        socket.emit('room:error', { message });
+      const record = await joinRoomDeps.roomRepository.findByCode(parsed.data.code);
+      if (!record) {
+        socket.emit('room:error', { message: `Sala "${parsed.data.code}" não encontrada` });
+        return;
       }
+      if (record.hostId !== parsed.data.playerId) {
+        socket.emit('room:error', { message: 'Somente o host pode reiniciar a partida' });
+        return;
+      }
+
+      runWithCountdown(io, parsed.data.code, 'restart', async () => {
+        try {
+          const { gameMode } = await restartRoom(restartRoomDeps, parsed.data);
+          const raceMode = gameMode as RaceMode;
+          const room = raceMode.getRoom();
+          const game = raceMode.getGame();
+          const playerIds = Array.from(room.players.keys());
+          io.to(parsed.data.code).emit('room:state', {
+            ...raceMode.configSnapshot(),
+            players: Array.from(room.players.values()),
+            progress: game.progressSummary(),
+            attemptsByPlayer: Object.fromEntries(playerIds.map((id) => [id, []])),
+            phase: game.phase,
+            winnerId: game.winnerId,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Erro desconhecido';
+          socket.emit('room:error', { message });
+        }
+      });
     });
 
     socket.on('guess:submit', (rawPayload: unknown) => {

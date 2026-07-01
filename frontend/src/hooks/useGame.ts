@@ -3,11 +3,13 @@ import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
 import type {
   Attempt,
+  CountdownStartedPayload,
   GameFinishedPayload,
   GuessResult,
   Player,
   RoomSessionPayload,
   RoomState,
+  RoundResolutionReason,
   RoundSnapshot,
   TieBreakStartedPayload,
   WordResolvedPayload,
@@ -22,11 +24,21 @@ export interface RevealInfo {
   isTieBreak: boolean;
 }
 
+export interface WordHistoryEntry {
+  wordIndex: number;
+  word: string;
+  winnerId: string | null;
+  reason: RoundResolutionReason;
+  isTieBreak: boolean;
+  tieBreakCandidates: string[] | null;
+}
+
 export function useGame(code: string, playerId: string, nickname: string) {
   const socketRef = useRef<Socket | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roundSequenceRef = useRef<number | null>(null);
   const sessionSecretRef = useRef<string | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -39,6 +51,8 @@ export function useGame(code: string, playerId: string, nickname: string) {
   const [error, setError] = useState<string | null>(null);
   const [extraAttempts, setExtraAttempts] = useState(false);
   const [playerStats, setPlayerStats] = useState<Record<string, { correct: number; wrong: number }>>({});
+  const [wordHistory, setWordHistory] = useState<WordHistoryEntry[]>([]);
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const playersRef = useRef<Player[]>([]);
 
@@ -51,6 +65,13 @@ export function useGame(code: string, playerId: string, nickname: string) {
     if (revealTimeoutRef.current) {
       clearTimeout(revealTimeoutRef.current);
       revealTimeoutRef.current = null;
+    }
+  }
+
+  function clearCountdownInterval(): void {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
     }
   }
 
@@ -79,7 +100,24 @@ export function useGame(code: string, playerId: string, nickname: string) {
       setFinished(null);
       setReveal(null);
       setPlayerStats({});
+      setWordHistory([]);
       clearRevealTimeout();
+      clearCountdownInterval();
+      setCountdown(null);
+    });
+
+    socket.on('room:countdown:started', (payload: CountdownStartedPayload) => {
+      clearCountdownInterval();
+      setCountdown(payload.seconds);
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearCountdownInterval();
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     });
 
     socket.on('room:players', (incomingPlayers: Player[]) => {
@@ -119,6 +157,18 @@ export function useGame(code: string, playerId: string, nickname: string) {
       clearRevealTimeout();
       revealTimeoutRef.current = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
 
+      setWordHistory((prev) => [
+        ...prev,
+        {
+          wordIndex: result.wordIndex,
+          word: result.revealedWord,
+          winnerId: result.winnerId,
+          reason: result.reason,
+          isTieBreak: result.isTieBreak,
+          tieBreakCandidates: result.tieBreakCandidates,
+        },
+      ]);
+
       setPlayerStats((prev) => {
         const next = { ...prev };
         for (const player of playersRef.current) {
@@ -149,6 +199,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
 
     return () => {
       clearRevealTimeout();
+      clearCountdownInterval();
       socket.disconnect();
     };
   }, [code, playerId, nickname]);
@@ -173,6 +224,8 @@ export function useGame(code: string, playerId: string, nickname: string) {
     error,
     extraAttempts,
     playerStats,
+    wordHistory,
+    countdown,
     submitGuess,
     restartGame,
   };
