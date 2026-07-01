@@ -28,7 +28,7 @@ export function registerRaceModeHandlers(
   sessionStore: PlayerSessionStore,
   restartRoomDeps: RestartRoomDeps,
 ): void {
-  registry.on('register', (code: string, gameMode: RaceMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
+  registry.on('register', (code: string, gameMode: RaceMode) => bindBroadcast(io, registry, code, gameMode));
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
@@ -258,7 +258,6 @@ export function registerRaceModeHandlers(
 function bindBroadcast(
   io: Namespace,
   registry: GameModeRegistry<RaceMode>,
-  sessionStore: PlayerSessionStore,
   code: string,
   gameMode: RaceMode,
 ): void {
@@ -268,6 +267,5 @@ function bindBroadcast(
   gameMode.on('race:finished', (payload) => {
     io.to(payload.roomId).emit('race:finished', payload);
     registry.remove(code);
-    sessionStore.clear(code);
   });
 }

@@ -28,7 +28,7 @@ export function registerChampionshipModeHandlers(
   sessionStore: PlayerSessionStore,
   restartRoomDeps: RestartRoomDeps,
 ): void {
-  registry.on('register', (code: string, gameMode: ChampionshipMode) => bindBroadcast(io, registry, sessionStore, code, gameMode));
+  registry.on('register', (code: string, gameMode: ChampionshipMode) => bindBroadcast(io, registry, code, gameMode));
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
@@ -249,7 +249,6 @@ export function registerChampionshipModeHandlers(
 function bindBroadcast(
   io: Namespace,
   registry: GameModeRegistry<ChampionshipMode>,
-  sessionStore: PlayerSessionStore,
   code: string,
   gameMode: ChampionshipMode,
 ): void {
@@ -260,6 +259,5 @@ function bindBroadcast(
   gameMode.on('game:finished', (payload) => {
     io.to(payload.roomId).emit('game:finished', payload);
     registry.remove(code);
-    sessionStore.clear(code);
   });
 }
