@@ -430,6 +430,55 @@ label.field {
   color: var(--color-text-muted);
 }
 
+/* Guess stats bar */
+
+.guess-stats {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.guess-stat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.guess-stat-correct {
+  background-color: var(--color-correct);
+  color: #fff;
+}
+
+.guess-stat-wrong {
+  background-color: var(--color-danger);
+  color: #fff;
+}
+
+.other-players-panel .guess-stat {
+  min-width: 20px;
+  height: 20px;
+  font-size: 10px;
+  padding: 0 4px;
+}
+
+.stat-pop {
+  animation: stat-pop 0.25s ease-out both;
+}
+
+@keyframes stat-pop {
+  0% { transform: scale(0.7); opacity: 0.4; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* Word grid / tiles */
 
 .word-grid {

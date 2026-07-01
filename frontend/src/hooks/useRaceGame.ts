@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { createSocket } from '../lib/socket';
 import type {
@@ -114,6 +114,17 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     socketRef.current?.emit('room:restart', { code, playerId });
   }
 
+  const sessionStats = useMemo(() => {
+    const stats: Record<string, { correct: number; wrong: number }> = {};
+    for (const entry of revealHistory) {
+      const cur = stats[entry.playerId] ?? { correct: 0, wrong: 0 };
+      stats[entry.playerId] = entry.reason === 'solved'
+        ? { correct: cur.correct + 1, wrong: cur.wrong }
+        : { correct: cur.correct, wrong: cur.wrong + 1 };
+    }
+    return stats;
+  }, [revealHistory]);
+
   return {
     connected,
     config,
@@ -121,6 +132,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     progress,
     attemptsByPlayer,
     revealHistory,
+    sessionStats,
     finished,
     submitGuess,
     restartGame,

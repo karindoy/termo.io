@@ -27,6 +27,10 @@ interface WordGridProps {
   onActiveCellClick?: (index: number) => void;
   /** Pre-render at least this many rows to prevent layout shifts. */
   totalRows?: number;
+  /** Session-level correct word count shown above the grid. */
+  correctWords?: number;
+  /** Session-level wrong word count shown above the grid. */
+  wrongWords?: number;
 }
 
 export function WordGrid({
@@ -38,6 +42,8 @@ export function WordGrid({
   activeLastEdited,
   onActiveCellClick,
   totalRows,
+  correctWords,
+  wrongWords,
 }: WordGridProps) {
   const [revealedCount, setRevealedCount] = useState(attempts.length);
   const previousLength = useRef(attempts.length);
@@ -58,7 +64,16 @@ export function WordGrid({
   const targetLength = Math.max(rows.length, totalRows ?? 0);
   while (rows.length < targetLength) rows.push(undefined);
 
+  const showStats = correctWords !== undefined && wrongWords !== undefined;
+
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {showStats && (
+        <div className="guess-stats">
+          <span key={`c-${correctWords}`} className="guess-stat guess-stat-correct stat-pop">{correctWords}</span>
+          <span key={`w-${wrongWords}`} className="guess-stat guess-stat-wrong stat-pop">✕ {wrongWords}</span>
+        </div>
+      )}
     <div id={gridId} className="word-grid">
       {rows.map((row, rowIndex) => (
         <div key={rowIndex} id={gridId ? `${gridId}-r${rowIndex}` : undefined} className="word-row">
@@ -95,6 +110,7 @@ export function WordGrid({
           })}
         </div>
       ))}
+    </div>
     </div>
   );
 }

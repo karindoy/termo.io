@@ -38,6 +38,9 @@ export function useGame(code: string, playerId: string, nickname: string) {
   const [finished, setFinished] = useState<GameFinishedPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [extraAttempts, setExtraAttempts] = useState(false);
+  const [playerStats, setPlayerStats] = useState<Record<string, { correct: number; wrong: number }>>({});
+
+  const playersRef = useRef<Player[]>([]);
 
   function applyRound(snapshot: RoundSnapshot): void {
     roundSequenceRef.current = snapshot.roundSequence;
@@ -68,16 +71,21 @@ export function useGame(code: string, playerId: string, nickname: string) {
 
     socket.on('room:state', (state: RoomState) => {
       applyRound(state);
+      playersRef.current = state.players;
       setPlayers(state.players);
       setScores(state.scores);
       setAttempts(state.attempts);
       setSolvedBy(state.solvedBy);
       setFinished(null);
       setReveal(null);
+      setPlayerStats({});
       clearRevealTimeout();
     });
 
-    socket.on('room:players', (incomingPlayers: Player[]) => setPlayers(incomingPlayers));
+    socket.on('room:players', (incomingPlayers: Player[]) => {
+      playersRef.current = incomingPlayers;
+      setPlayers(incomingPlayers);
+    });
 
     socket.on('round:started', (snapshot: RoundSnapshot) => {
       applyRound(snapshot);
@@ -110,6 +118,18 @@ export function useGame(code: string, playerId: string, nickname: string) {
       });
       clearRevealTimeout();
       revealTimeoutRef.current = setTimeout(() => setReveal(null), REVEAL_DISPLAY_MS);
+
+      setPlayerStats((prev) => {
+        const next = { ...prev };
+        for (const player of playersRef.current) {
+          const id = player.playerId;
+          const cur = next[id] ?? { correct: 0, wrong: 0 };
+          next[id] = result.winnerId === id
+            ? { correct: cur.correct + 1, wrong: cur.wrong }
+            : { correct: cur.correct, wrong: cur.wrong + 1 };
+        }
+        return next;
+      });
     });
 
     socket.on('game:finished', (payload: GameFinishedPayload) => {
@@ -152,6 +172,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
     finished,
     error,
     extraAttempts,
+    playerStats,
     submitGuess,
     restartGame,
   };

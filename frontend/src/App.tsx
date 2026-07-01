@@ -162,7 +162,7 @@ function ChampionshipGameRoom({
   isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, players, scores, attempts, solvedBy, round, reveal, finished, error, extraAttempts, submitGuess, restartGame } = useGame(
+  const { connected, players, scores, attempts, solvedBy, round, reveal, finished, error, extraAttempts, playerStats, submitGuess, restartGame } = useGame(
     code,
     playerId,
     nickname,
@@ -317,6 +317,8 @@ function ChampionshipGameRoom({
                   wordLength={wordLength}
                   attempts={attempts.filter((attempt) => attempt.playerId === player.playerId)}
                   totalRows={otherPlayerRows}
+                  correctWords={playerStats[player.playerId]?.correct ?? 0}
+                  wrongWords={playerStats[player.playerId]?.wrong ?? 0}
                 />
               ))}
               {otherPlayers.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum outro jogador na sala ainda.</p>}
@@ -332,6 +334,8 @@ function ChampionshipGameRoom({
               activeCursor={canGuess ? guessInput.cursor : undefined}
               activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
               onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+              correctWords={playerStats[playerId]?.correct ?? 0}
+              wrongWords={playerStats[playerId]?.wrong ?? 0}
             />
           </div>
 
@@ -372,7 +376,7 @@ function RaceGameRoom({
   isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, config, players, progress, attemptsByPlayer, revealHistory, finished, submitGuess, restartGame } =
+  const { connected, config, players, progress, attemptsByPlayer, revealHistory, sessionStats, finished, submitGuess, restartGame } =
     useRaceGame(code, playerId, nickname);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [winnerModalDismissed, setWinnerModalDismissed] = useState(false);
@@ -479,6 +483,8 @@ function RaceGameRoom({
                   wordLength={wordLength}
                   attempts={attemptsByPlayer[player.playerId] ?? []}
                   totalRows={6}
+                  correctWords={sessionStats[player.playerId]?.correct ?? 0}
+                  wrongWords={sessionStats[player.playerId]?.wrong ?? 0}
                 />
               ))}
               {otherPlayers.length === 0 && <p style={{ color: 'var(--color-text-muted)' }}>Nenhum outro jogador na sala ainda.</p>}
@@ -494,6 +500,8 @@ function RaceGameRoom({
               activeCursor={canGuess ? guessInput.cursor : undefined}
               activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
               onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+              correctWords={sessionStats[playerId]?.correct ?? 0}
+              wrongWords={sessionStats[playerId]?.wrong ?? 0}
             />
           </div>
 
