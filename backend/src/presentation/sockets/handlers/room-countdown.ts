@@ -1,6 +1,6 @@
 import type { Namespace } from 'socket.io';
 
-export const COUNTDOWN_SECONDS = 15;
+export const COUNTDOWN_SECONDS = 10;
 
 const pendingCountdowns = new Map<string, NodeJS.Timeout>();
 

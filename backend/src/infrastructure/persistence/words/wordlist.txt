@@ -5,7 +5,6 @@ todos
 ainda
 entre
 fazer
-paulo
 minha
 tempo
 assim
@@ -84,7 +83,6 @@ julho
 volta
 terra
 feito
-jesus
 pelas
 ficou
 junho
@@ -92,7 +90,6 @@ algum
 texto
 meses
 nesse
-maria
 esses
 santa
 vista
@@ -145,7 +142,6 @@ criar
 festa
 morte
 posso
-silva
 marca
 favor
 plano
@@ -392,7 +388,6 @@ senha
 oeste
 clara
 posto
-gomes
 preso
 sério
 letra
@@ -401,7 +396,6 @@ calor
 velha
 cheia
 frase
-bruno
 úteis
 preta
 salão
@@ -426,16 +420,13 @@ culpa
 palco
 pensa
 ceará
-lucas
 padre
 matar
 penal
 criou
 ética
-rocha
 datas
 facto
-paula
 ponte
 negro
 nisso
@@ -563,7 +554,6 @@ lavar
 noiva
 ondas
 porte
-bento
 mário
 beber
 sítio
@@ -679,8 +669,6 @@ vivos
 colar
 diria
 vosso
-assis
-moura
 lagoa
 graus
 elite
@@ -746,7 +734,6 @@ vence
 anime
 radio
 grego
-lúcia
 fiéis
 ligue
 podes
@@ -754,7 +741,6 @@ perna
 pague
 macho
 clipe
-viana
 laser
 ultra
 bordo
@@ -783,7 +769,6 @@ batom
 chapa
 modos
 adeus
-abreu
 presa
 salve
 alemã
@@ -832,7 +817,6 @@ dólar
 evite
 tesão
 porem
-marta
 seios
 diogo
 grito
@@ -852,7 +836,6 @@ circo
 torne
 coral
 malha
-laura
 lento
 verso
 idoso
@@ -899,7 +882,6 @@ posta
 opala
 cuida
 afeta
-prado
 odeio
 digno
 bando
@@ -935,7 +917,6 @@ vasta
 anéis
 sirva
 envia
-sofia
 grana
 farão
 curte
@@ -965,7 +946,6 @@ secar
 síria
 rival
 pedem
-carmo
 flora
 grama
 rigor
@@ -979,7 +959,6 @@ calmo
 palma
 avise
 bruto
-bueno
 parei
 casou
 fecho
@@ -1027,7 +1006,6 @@ stand
 safra
 dance
 leiam
-paiva
 gotas
 acabo
 poste
@@ -1103,7 +1081,6 @@ malta
 rindo
 henry
 aluna
-diana
 milão
 pesar
 lidas
@@ -1161,7 +1138,6 @@ geram
 amapá
 guiné
 mangá
-couto
 gorda
 desce
 tigre
@@ -1333,7 +1309,6 @@ tchau
 corno
 julga
 param
-elisa
 garra
 cubra
 lilás
@@ -1353,7 +1328,6 @@ davam
 notei
 somar
 magro
-lauro
 feche
 acusa
 salsa
@@ -1369,30 +1343,22 @@ couve
 rende
 aveia
 trans
-Aarao
 Acaia
 Acker
-Aires
 Algol
 Alpes
 Amapa
-Andre
 Argel
 Argos
-Artur
-Aecio
 Babel
 Bagda
 Bangu
 Belem
 Berna
 Bielo
-Borba
 Ceara
-Chico
 Chile
 China
-Couto
 Dacia
 Egito
 Elixa
@@ -1407,50 +1373,35 @@ Golfo
 Hegel
 Intel
 Japao
-Jesus
 Jobim
-Jorge
 Klein
 Labma
 Lages
-Laura
-Lauro
 Lenin
 Linda
 Linus
 Linux
-Lucio
-Malba
-Marco
-Maria
-Marta
 Marte
-Mauro
 Miami
 Minas
 Morse
-Mario
 Media
 Natal
 Nobel
 Norte
 Paris
 Peano
-Pedro
 Piaui
 Porto
 Praga
-Ramos
 Rouen
 Saara
 Santa
 Santo
 Suica
 Siria
-Sonia
 Terra
 Texas
-Tomas
 Uniao
 VARIG
 Vegas
@@ -1612,7 +1563,6 @@ agues
 aguou
 aguca
 aguco
-aires
 ajais
 ajamo
 ajudo
@@ -1691,7 +1641,6 @@ andas
 andem
 andes
 andor
-andre
 anela
 anele
 anelo
@@ -2310,7 +2259,6 @@ chiai
 chiam
 chiar
 chias
-chica
 chiei
 chiem
 chies
@@ -2535,7 +2483,6 @@ custe
 cuica
 capua
 celia
-cesar
 cesio
 cilio
 cirio
@@ -2722,7 +2669,6 @@ ecoes
 ecoou
 edema
 edita
-edite
 edito
 educa
 educo
@@ -3116,7 +3062,6 @@ fucas
 fucou
 facil
 fatuo
-felix
 femea
 femur
 forum
@@ -3316,7 +3261,6 @@ hulha
 hunos
 hurra
 habil
-helio
 hifen
 himen
 humus
@@ -3906,7 +3850,6 @@ musca
 musco
 musgo
 mafia
-mario
 medio
 midia
 miope
@@ -4848,7 +4791,6 @@ sigma
 silos
 silve
 silvo
-simao
 sinas
 sinos
 siris
@@ -4922,7 +4864,6 @@ sorva
 sorve
 sorvi
 sorvo
-souza
 sovai
 sovam
 sovar
@@ -5149,7 +5090,6 @@ tolhi
 tolho
 tolos
 tomai
-tomas
 tomba
 tombe
 tombo
@@ -5599,13 +5539,10 @@ zurra
 zurre
 zurro
 ziper
-Atila
 Avila
 Edipo
 Efeso
 Epiro
-Erica
-Erico
 Evora
 India
 Orion
