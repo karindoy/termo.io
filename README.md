@@ -142,8 +142,11 @@ consumed in draw order) so the suite can know secret words in advance and force 
 deterministic tie-break — `run.sh` computes and passes this automatically.
 
 ---
-
-
+## TODO
+-ranqueada (?)
+-no fim aparecer quantas tentativas a pessoa tentou
+-termo,dueto, quarteto
+-campeaonato ganha pessoa com menos guess
 
 ## Environment Variables
 
