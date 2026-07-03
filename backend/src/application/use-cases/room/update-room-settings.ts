@@ -6,6 +6,7 @@ import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-sta
 import type { ChampionshipMode } from '../../game-modes/championship-mode.js';
 import type { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
+import { withRoomLock } from '../../../infrastructure/realtime/room-lock.js';
 
 export interface UpdateRoomSettingsDeps {
   roomRepository: RoomRepository;
@@ -20,6 +21,13 @@ export interface UpdateRoomSettingsInput {
 }
 
 export async function updateRoomSettings(
+  deps: UpdateRoomSettingsDeps,
+  input: UpdateRoomSettingsInput,
+): Promise<RoomRecord> {
+  return withRoomLock(input.code, () => updateRoomSettingsLocked(deps, input));
+}
+
+async function updateRoomSettingsLocked(
   deps: UpdateRoomSettingsDeps,
   input: UpdateRoomSettingsInput,
 ): Promise<RoomRecord> {

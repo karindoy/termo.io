@@ -1,0 +1,77 @@
+services:
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  backend:
+    image: node:20-bookworm-slim
+    user: '${HOST_UID}:${HOST_GID}'
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    command: npm run dev -w backend
+    environment:
+      HOME: /tmp
+      PORT: '4000'
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: http://frontend:5173
+      E2E_FIXED_WORDS: ${E2E_FIXED_WORDS}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  frontend:
+    image: node:20-bookworm-slim
+    user: '${HOST_UID}:${HOST_GID}'
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+    command: npm run dev -w frontend -- --port 5173 --host 0.0.0.0
+    environment:
+      HOME: /tmp
+      VITE_SOCKET_URL: http://backend:4000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:5173', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    user: '${HOST_UID}:${HOST_GID}'
+    working_dir: /workspace/e2e
+    volumes:
+      - ..:/workspace
+    command: npm run playwright:run
+    environment:
+      HOME: /tmp
+      BASE_URL: http://frontend:5173
+      E2E_PLAYER_COUNT: ${E2E_PLAYER_COUNT:-50}
+      E2E_TEST_TIMEOUT_MS: ${E2E_TEST_TIMEOUT_MS:-900000}
+    depends_on:
+      frontend:
+        condition: service_healthy

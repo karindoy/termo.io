@@ -80,6 +80,7 @@ termo.io/
 │   └── src/
 │       ├── components/       # WordGrid, Keyboard, Lobby, PlayerBoard
 │       └── hooks/            # useGame, useRaceGame, useSocket
+├── e2e/              # Playwright end-to-end suite (see below), runs via Docker
 └── infra/            # Docker Compose, Nginx, env examples, CI config
 ```
 
@@ -108,13 +109,45 @@ npm run dev:frontend     # start frontend dev server (hot reload)
 npm run build            # build both packages
 npm run typecheck        # tsc --noEmit across all packages
 npm run test             # run unit tests (Vitest)
+npm run test:e2e         # run the full Playwright e2e suite (see below)
 ```
 
 ---
 
+## End-to-End Tests
+
+`e2e/` is a Playwright suite (`e2e/tests/max-players.spec.ts`) that drives both game
+modes at the room's maximum size (50 players) through a full match — lobby, gameplay,
+tie-break (campeonato only), and the final placar modal — taking a screenshot at each
+stage into `e2e/screenshots/{corrida,campeonato}/`.
+
+It runs entirely inside Docker (`e2e/docker-compose.yml`: redis + backend + frontend +
+a Playwright-bundled runner on one network), so nothing needs to be installed on the
+host beyond Docker itself:
+
+```bash
+npm run test:e2e
+# or directly:
+bash e2e/run.sh
+```
+
+Useful overrides (e.g. for a fast smoke run before a full 50-player pass):
+
+```bash
+E2E_PLAYER_COUNT=4 E2E_TEST_TIMEOUT_MS=180000 bash e2e/run.sh
+```
+
+The backend accepts an opt-in `E2E_FIXED_WORDS` env var (comma-separated secret words,
+consumed in draw order) so the suite can know secret words in advance and force a
+deterministic tie-break — `run.sh` computes and passes this automatically.
+
+---
+
+
+
 ## Environment Variables
 
-Copy `infra/env/.env.example` and adjust as needed. Never commit real secrets.
+See `infra/docker-compose.yml` for the full set wired up per service. Never commit real secrets.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -128,7 +161,7 @@ Copy `infra/env/.env.example` and adjust as needed. Never commit real secrets.
 
 1. Fork the repo and create a feature branch
 2. Follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages
-3. Ensure `npm run typecheck`, `npm run test`, and `npm run lint` all pass before opening a PR
+3. Ensure `npm run typecheck` and `npm run test` pass before opening a PR
 4. PRs that bypass these checks will not be merged
 
 ---

@@ -4,6 +4,7 @@ import type { ChampionshipMode } from '../../game-modes/championship-mode.js';
 import type { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import type { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
+import { withRoomLock } from '../../../infrastructure/realtime/room-lock.js';
 
 export interface LeaveRoomDeps {
   roomRepository: RoomRepository;
@@ -26,6 +27,10 @@ export interface LeaveRoomResult {
 }
 
 export async function leaveRoom(deps: LeaveRoomDeps, input: LeaveRoomInput): Promise<LeaveRoomResult> {
+  return withRoomLock(input.code, () => leaveRoomLocked(deps, input));
+}
+
+async function leaveRoomLocked(deps: LeaveRoomDeps, input: LeaveRoomInput): Promise<LeaveRoomResult> {
   const record = await deps.roomRepository.findByCode(input.code);
   if (!record) {
     throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);

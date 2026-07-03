@@ -287,10 +287,16 @@ function bindBroadcast(
   gameMode: RaceMode,
 ): void {
   gameMode.on('race:started', (config) => io.to(config.roomId).emit('race:started', config));
-  gameMode.on('player:word-started', (snapshot) => io.to(snapshot.roomId).emit('player:word-started', snapshot));
-  gameMode.on('player:word-resolved', (result) => io.to(result.roomId).emit('player:word-resolved', result));
+  // Queued as microtasks so they reach clients *after* the 'guess:result' for the guess
+  // that triggered them — see the equivalent comment in register-championship-mode-handlers.ts.
+  gameMode.on('player:word-started', (snapshot) =>
+    queueMicrotask(() => io.to(snapshot.roomId).emit('player:word-started', snapshot)),
+  );
+  gameMode.on('player:word-resolved', (result) => queueMicrotask(() => io.to(result.roomId).emit('player:word-resolved', result)));
   gameMode.on('race:finished', (payload) => {
-    io.to(payload.roomId).emit('race:finished', payload);
-    registry.remove(code);
+    queueMicrotask(() => {
+      io.to(payload.roomId).emit('race:finished', payload);
+      registry.remove(code);
+    });
   });
 }

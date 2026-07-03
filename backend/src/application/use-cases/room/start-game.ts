@@ -5,6 +5,7 @@ import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-sta
 import type { ChampionshipMode } from '../../game-modes/championship-mode.js';
 import type { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
+import { withRoomLock } from '../../../infrastructure/realtime/room-lock.js';
 
 export interface StartGameDeps {
   roomRepository: RoomRepository;
@@ -18,6 +19,10 @@ export interface StartGameInput {
 }
 
 export async function startGame(deps: StartGameDeps, input: StartGameInput): Promise<RoomRecord> {
+  return withRoomLock(input.code, () => startGameLocked(deps, input));
+}
+
+async function startGameLocked(deps: StartGameDeps, input: StartGameInput): Promise<RoomRecord> {
   const record = await deps.roomRepository.findByCode(input.code);
   if (!record) {
     throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);

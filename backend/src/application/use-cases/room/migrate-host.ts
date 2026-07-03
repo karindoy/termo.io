@@ -1,5 +1,6 @@
 import type { RoomRecord, RoomRepository } from '../../../domain/repositories/room-repository.js';
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
+import { withRoomLock } from '../../../infrastructure/realtime/room-lock.js';
 
 export interface MigrateHostDeps {
   roomRepository: RoomRepository;
@@ -15,6 +16,10 @@ export interface MigrateHostResult {
 }
 
 export async function migrateHost(deps: MigrateHostDeps, input: MigrateHostInput): Promise<MigrateHostResult> {
+  return withRoomLock(input.code, () => migrateHostLocked(deps, input));
+}
+
+async function migrateHostLocked(deps: MigrateHostDeps, input: MigrateHostInput): Promise<MigrateHostResult> {
   const record = await deps.roomRepository.findByCode(input.code);
   if (!record) {
     throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);

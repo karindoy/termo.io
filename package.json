@@ -3,14 +3,16 @@
   "private": true,
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "e2e"
   ],
   "scripts": {
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
     "build": "npm run build -w backend && npm run build -w frontend",
     "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
-    "test": "npm run test -w backend"
+    "test": "npm run test -w backend",
+    "test:e2e": "npm run test:e2e -w e2e"
   },
   "dependencies": {
     "@fastify/cors": "^8.5.0"

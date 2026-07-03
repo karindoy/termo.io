@@ -277,12 +277,23 @@ function bindBroadcast(
   code: string,
   gameMode: ChampionshipMode,
 ): void {
-  gameMode.on('round:started', (snapshot) => io.to(snapshot.roomId).emit('round:started', snapshot));
-  gameMode.on('round:extra-attempts', (snapshot) => io.to(snapshot.roomId).emit('round:extra-attempts', snapshot));
-  gameMode.on('word:resolved', (result) => io.to(result.roomId).emit('word:resolved', result));
-  gameMode.on('tiebreak:started', (payload) => io.to(payload.roomId).emit('tiebreak:started', payload));
+  // Queued as microtasks so they reach clients *after* the 'guess:result' for the guess
+  // that triggered them: GameMode.submitGuess() resolves the round (and thus emits these)
+  // synchronously, before the 'guess:submit' handler gets to emit 'guess:result'. Without
+  // this deferral, a client's round-transition handler (which resets its per-round attempt
+  // state) runs before it processes 'guess:result', so it discards the very guess that won
+  // the round — the winning tile never renders. Deferring only the *broadcast*, not the
+  // game-mode's own state change, keeps this a presentation-layer fix.
+  gameMode.on('round:started', (snapshot) => queueMicrotask(() => io.to(snapshot.roomId).emit('round:started', snapshot)));
+  gameMode.on('round:extra-attempts', (snapshot) =>
+    queueMicrotask(() => io.to(snapshot.roomId).emit('round:extra-attempts', snapshot)),
+  );
+  gameMode.on('word:resolved', (result) => queueMicrotask(() => io.to(result.roomId).emit('word:resolved', result)));
+  gameMode.on('tiebreak:started', (payload) => queueMicrotask(() => io.to(payload.roomId).emit('tiebreak:started', payload)));
   gameMode.on('game:finished', (payload) => {
-    io.to(payload.roomId).emit('game:finished', payload);
-    registry.remove(code);
+    queueMicrotask(() => {
+      io.to(payload.roomId).emit('game:finished', payload);
+      registry.remove(code);
+    });
   });
 }

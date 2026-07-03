@@ -5,6 +5,7 @@ import { UnauthorizedHostActionError } from '../../../domain/errors/unauthorized
 import { ChampionshipMode } from '../../game-modes/championship-mode.js';
 import { RaceMode } from '../../game-modes/race-mode.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
+import { withRoomLock } from '../../../infrastructure/realtime/room-lock.js';
 
 export interface RestartRoomDeps {
   roomRepository: RoomRepository;
@@ -19,6 +20,10 @@ export interface RestartRoomInput {
 }
 
 export async function restartRoom(deps: RestartRoomDeps, input: RestartRoomInput): Promise<{ record: RoomRecord; gameMode: ChampionshipMode | RaceMode }> {
+  return withRoomLock(input.code, () => restartRoomLocked(deps, input));
+}
+
+async function restartRoomLocked(deps: RestartRoomDeps, input: RestartRoomInput): Promise<{ record: RoomRecord; gameMode: ChampionshipMode | RaceMode }> {
   const record = await deps.roomRepository.findByCode(input.code);
   if (!record) throw new RoomNotFoundError(`Sala "${input.code}" não encontrada`);
   if (record.hostId !== input.playerId) throw new UnauthorizedHostActionError('Somente o host pode reiniciar a partida');
