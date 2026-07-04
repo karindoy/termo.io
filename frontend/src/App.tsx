@@ -14,6 +14,7 @@ import { CountdownDisplay } from './components/CountdownDisplay';
 import { Lobby } from './components/Lobby';
 import { PublicRoomBrowser } from './components/PublicRoomBrowser';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
+import { clearStoredRoomCode, getStoredRoomCode, storeRoomCode } from './lib/active-room-storage';
 import { createRoom, getRoom, RoomLookupError } from './lib/api';
 import type { RoomMode, RoomRecord } from './lib/types';
 
@@ -22,26 +23,68 @@ const playerId = getOrCreatePlayerId();
 export function App() {
   const [nickname, setNickname] = useState<string | null>(getStoredNickname());
   const [room, setRoom] = useState<RoomRecord | null>(null);
+  const [restoring, setRestoring] = useState(true);
+
+  useEffect(() => {
+    const storedCode = getStoredRoomCode();
+    if (!storedCode) {
+      setRestoring(false);
+      return;
+    }
+
+    getRoom(storedCode)
+      .then((record) => {
+        // A refreshed page only resumes a seat in a game that's still running —
+        // once it's back in the lobby or finished the seat is not kept.
+        const seatIsLive = record.status === 'in-progress' && record.players.some((player) => player.playerId === playerId);
+        if (seatIsLive) {
+          setRoom(record);
+        } else {
+          clearStoredRoomCode();
+        }
+      })
+      .catch(() => clearStoredRoomCode())
+      .finally(() => setRestoring(false));
+  }, []);
+
+  function handleRoomReady(record: RoomRecord): void {
+    storeRoomCode(record.code);
+    setRoom(record);
+  }
+
+  function handleBack(): void {
+    clearStoredRoomCode();
+    setRoom(null);
+  }
 
   if (!nickname) {
     return <NicknameForm onSubmit={(value) => { storeNickname(value); setNickname(value); }} />;
   }
 
+  if (restoring) {
+    return (
+      <div id="restoring-session" className="centered-shell">
+        <h1>termo.io</h1>
+        <p>Reconectando…</p>
+      </div>
+    );
+  }
+
   if (!room) {
-    return <RoomChoiceScreen nickname={nickname} onRoomReady={setRoom} />;
+    return <RoomChoiceScreen nickname={nickname} onRoomReady={handleRoomReady} />;
   }
 
   if (room.status === 'lobby') {
     return (
-      <Lobby room={room} playerId={playerId} nickname={nickname} onGameStart={setRoom} onBack={() => setRoom(null)} />
+      <Lobby room={room} playerId={playerId} nickname={nickname} onGameStart={handleRoomReady} onBack={handleBack} />
     );
   }
 
   if (room.mode === 'championship') {
-    return <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={() => setRoom(null)} />;
+    return <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={handleBack} />;
   }
 
-  return <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={() => setRoom(null)} />;
+  return <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={handleBack} />;
 }
 
 function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
@@ -168,6 +211,7 @@ function ChampionshipGameRoom({
 
   useEffect(() => {
     if (!finished) setPlacarDismissed(false);
+    else clearStoredRoomCode();
   }, [finished]);
 
   const wordLength = round?.wordLength ?? 5;
@@ -400,6 +444,7 @@ function RaceGameRoom({
 
   useEffect(() => {
     if (!finished) setPlacarDismissed(false);
+    else clearStoredRoomCode();
   }, [finished]);
 
   const wordLength = config?.wordLength ?? 5;

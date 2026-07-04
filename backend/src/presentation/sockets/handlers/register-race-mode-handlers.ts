@@ -7,6 +7,7 @@ import { updateRoomSettings } from '../../../application/use-cases/room/update-r
 import { startGame } from '../../../application/use-cases/room/start-game.js';
 import { restartRoom, type RestartRoomDeps } from '../../../application/use-cases/room/restart-room.js';
 import { migrateHost } from '../../../application/use-cases/room/migrate-host.js';
+import { markRoomFinished } from '../../../application/use-cases/room/mark-room-finished.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import type { HostMigrationTracker } from '../../../infrastructure/realtime/host-migration-tracker.js';
 import type { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
@@ -29,7 +30,9 @@ export function registerRaceModeHandlers(
   sessionStore: PlayerSessionStore,
   restartRoomDeps: RestartRoomDeps,
 ): void {
-  registry.on('register', (code: string, gameMode: RaceMode) => bindBroadcast(io, registry, code, gameMode));
+  registry.on('register', (code: string, gameMode: RaceMode) =>
+    bindBroadcast(io, registry, code, gameMode, joinRoomDeps),
+  );
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
@@ -285,6 +288,7 @@ function bindBroadcast(
   registry: GameModeRegistry<RaceMode>,
   code: string,
   gameMode: RaceMode,
+  joinRoomDeps: JoinRoomDeps,
 ): void {
   gameMode.on('race:started', (config) => io.to(config.roomId).emit('race:started', config));
   // Queued as microtasks so they reach clients *after* the 'guess:result' for the guess
@@ -294,9 +298,10 @@ function bindBroadcast(
   );
   gameMode.on('player:word-resolved', (result) => queueMicrotask(() => io.to(result.roomId).emit('player:word-resolved', result)));
   gameMode.on('race:finished', (payload) => {
-    queueMicrotask(() => {
+    queueMicrotask(async () => {
       io.to(payload.roomId).emit('race:finished', payload);
       registry.remove(code);
+      await markRoomFinished(joinRoomDeps, code);
     });
   });
 }

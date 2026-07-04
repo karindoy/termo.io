@@ -7,6 +7,7 @@ import { updateRoomSettings } from '../../../application/use-cases/room/update-r
 import { startGame } from '../../../application/use-cases/room/start-game.js';
 import { restartRoom, type RestartRoomDeps } from '../../../application/use-cases/room/restart-room.js';
 import { migrateHost } from '../../../application/use-cases/room/migrate-host.js';
+import { markRoomFinished } from '../../../application/use-cases/room/mark-room-finished.js';
 import type { GameModeRegistry } from '../../../infrastructure/realtime/game-mode-registry.js';
 import type { HostMigrationTracker } from '../../../infrastructure/realtime/host-migration-tracker.js';
 import type { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
@@ -29,7 +30,9 @@ export function registerChampionshipModeHandlers(
   sessionStore: PlayerSessionStore,
   restartRoomDeps: RestartRoomDeps,
 ): void {
-  registry.on('register', (code: string, gameMode: ChampionshipMode) => bindBroadcast(io, registry, code, gameMode));
+  registry.on('register', (code: string, gameMode: ChampionshipMode) =>
+    bindBroadcast(io, registry, code, gameMode, joinRoomDeps),
+  );
 
   io.on('connection', (socket: Socket) => {
     let joinedCode: string | null = null;
@@ -276,6 +279,7 @@ function bindBroadcast(
   registry: GameModeRegistry<ChampionshipMode>,
   code: string,
   gameMode: ChampionshipMode,
+  joinRoomDeps: JoinRoomDeps,
 ): void {
   // Queued as microtasks so they reach clients *after* the 'guess:result' for the guess
   // that triggered them: GameMode.submitGuess() resolves the round (and thus emits these)
@@ -291,9 +295,10 @@ function bindBroadcast(
   gameMode.on('word:resolved', (result) => queueMicrotask(() => io.to(result.roomId).emit('word:resolved', result)));
   gameMode.on('tiebreak:started', (payload) => queueMicrotask(() => io.to(payload.roomId).emit('tiebreak:started', payload)));
   gameMode.on('game:finished', (payload) => {
-    queueMicrotask(() => {
+    queueMicrotask(async () => {
       io.to(payload.roomId).emit('game:finished', payload);
       registry.remove(code);
+      await markRoomFinished(joinRoomDeps, code);
     });
   });
 }
