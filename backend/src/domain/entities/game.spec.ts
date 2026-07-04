@@ -18,6 +18,14 @@ class FixedWordRepository implements WordRepository {
   isValidGuess(): boolean {
     return true;
   }
+
+  getWordAt(index: number): Word {
+    return Word.create(this.words[index % this.words.length]!);
+  }
+
+  size(): number {
+    return this.words.length;
+  }
 }
 
 const baseOptions: GameOptions = {

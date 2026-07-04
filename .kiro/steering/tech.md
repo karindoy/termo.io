@@ -16,24 +16,26 @@ Monorepo split into three top-level responsibilities — **backend**, **frontend
 backend/
 ├── src/
 │   ├── domain/
-│   │   ├── entities/          # Room, Player, Game, Word, Attempt, Score
-│   │   ├── value-objects/     # GuessFeedback, NormalizedLetter, RoomCode, RoomSettings, PlayerIdentity
+│   │   ├── entities/          # Room, Player, Game, Word, Attempt, Score, DailyPuzzle (planned)
+│   │   ├── value-objects/     # GuessFeedback, NormalizedLetter, RoomCode, RoomSettings, PlayerIdentity, PuzzleDate (planned)
 │   │   ├── repositories/      # RoomRepository, WordRepository (interfaces only)
 │   │   └── errors/            # RoomFullError, RoomNotFoundError, InvalidGuessError, AttemptsExceededError
 │   ├── application/
 │   │   ├── use-cases/
 │   │   │   ├── room/          # create-room, join-room, leave-room, list-public-rooms, migrate-host
-│   │   │   └── game/          # start-game, submit-guess, advance-to-next-word, end-game, resolve-tie-break
+│   │   │   ├── game/          # start-game, submit-guess, advance-to-next-word, end-game, resolve-tie-break
+│   │   │   └── daily/          # (planned) resolve-daily-puzzle, submit-daily-guess — shared by Termo/Dueto/Quarteto
 │   │   └── game-modes/        # GameMode interface + ChampionshipMode, RaceMode implementations
+│   │       └── daily-modes/    # (planned) TermoMode, DuetoMode, QuartetoMode — differ only in wordCount/maxAttempts
 │   ├── infrastructure/
 │   │   ├── persistence/
 │   │   │   ├── redis/         # RoomRepository impl, live game/attempt state, TTL cleanup
-│   │   │   └── words/         # WordRepository impl (BR-PT dictionary file)
+│   │   │   └── words/         # WordRepository impl (BR-PT dictionary file), DailyWordResolver (planned, see below)
 │   │   ├── realtime/          # Socket.io server setup, event adapters
 │   │   └── config/            # env loading, DI/composition root
 │   ├── presentation/
 │   │   ├── http/
-│   │   │   ├── routes/        # public-rooms list, health
+│   │   │   ├── routes/        # public-rooms list, health, daily/:mode (planned, e.g. /daily/termo)
 │   │   │   ├── controllers/
 │   │   │   └── middlewares/   # error-handler, validation (zod), rate-limit
 │   │   └── sockets/
@@ -49,8 +51,8 @@ backend/
 frontend/
 ├── src/
 │   ├── components/            # WordGrid, Keyboard, Lobby, PlayerBoard, PlacarModal
-│   ├── hooks/                 # useSocket, useRoom, useGame
-│   ├── pages/                 # Home, CreateRoom, JoinRoom, GameRoom
+│   ├── hooks/                 # useSocket, useRoom, useGame, useDailyGame (planned)
+│   ├── pages/                 # Home, CreateRoom, JoinRoom, GameRoom, Termo, Dueto, Quarteto (planned)
 │   └── lib/                   # socket client setup, api client
 ├── Dockerfile
 ├── package.json
@@ -91,6 +93,38 @@ Root: `package.json` (npm workspaces: `backend`, `frontend`), `CODING_STANDARDS.
 - **Eligible player set depends on phase**: `ChampionshipMode.eligiblePlayerIds()` returns every connected room player during a normal round, but only `game.tieBreakCandidates` while `game.phase === 'tie-break'` — non-candidate players are barred from guessing during a tie-break (unchanged, enforced in `Game.submitGuess`) and would never "finish", so counting them in `allPlayersFinished` would hang the tie-break round until its timeout on every single occurrence. This is the one place the "wait for everyone" rule must **not** mean "wait for the whole room".
 - **Timeout also honors partial solves**: if the per-word timer (`scheduleTimeout`) fires before everyone finishes, it no longer hardcodes `winnerId: null` — it calls `bestSolver()` first and awards the word to whoever had solved it (fewest attempts) by that point, falling back to `reason: 'timeout', winnerId: null` only if nobody had solved it at all.
 - **Frontend gating is per-player, not per-round**: `ChampionshipGameRoom` in `App.tsx` no longer gates the whole active row on `solvedBy` (that field only ever reflects the *entire game* concluding — see `submit-guess.ts`'s `solved: gameMode.isResolved()` — it was already not a reliable "this round just ended" signal). Instead `hasSolvedCurrentWord` is derived straight from `myAttempts` (`attempt.feedback.every(letter => letter.status === 'correct')`) and combined with the existing attempts-exhausted check into `hasFinishedWord`, which now gates `canGuess` for that player alone. Other players keep guessing normally until the round actually resolves (`round:started`/`tiebreak:started`), exactly as before.
+
+## Singleplayer Daily Games (planned: Termo, Dueto, Quarteto)
+
+No `Room`/`Player`/socket session involved — these are solo, stateless-per-request puzzles served over plain HTTP, sharing only the `WordRepository`/wordlist infrastructure with multiplayer.
+
+- **Config differs only by word count and attempt budget**: the three games are the same mechanic parameterized differently — implement as one `DailyMode` (or `TermoMode`/`DuetoMode`/`QuartetoMode` per the `GameMode` strategy pattern) taking `{ wordCount, maxAttempts }`:
+  | Mode | `wordCount` | `maxAttempts` |
+  |---|---|---|
+  | Termo | 1 | 6 |
+  | Dueto | 2 | 7 |
+  | Quarteto | 4 | 9 |
+- **Date-seeded word selection algorithm**: for a given calendar date `D` (ISO `YYYY-MM-DD`, resolved in a fixed timezone — e.g. `America/Sao_Paulo` — so the puzzle rolls over at the same instant for every player regardless of their local timezone) and mode `M`, `DailyWordResolver` (planned, `infrastructure/persistence/words/`) computes:
+  1. A base seed: a stable integer hash of `` `${D}:${M}` `` (e.g. a small non-cryptographic hash like FNV-1a — determinism matters, not unpredictability/security, since the whole point is every player *can* eventually see the same answer).
+  2. A first index: `seed % wordlist.length`.
+  3. For `wordCount > 1`, subsequent indices via a deterministic probe (e.g. linear congruential step or `hash(seed, i) % wordlist.length`), **skipping any index already chosen for this puzzle** so a single Dueto/Quarteto puzzle never repeats the same word on two boards.
+  - This requires **no persistence** — any server instance, at any time, recomputes the identical word(s) for date `D` + mode `M` from the algorithm alone. No "today's word" row to write or cache-invalidate.
+- **Shared attempt pool, per-board feedback**: unlike Championship (one word, one attempt counter per word), Dueto/Quarteto have `wordCount` secret words open simultaneously against a single shared attempt counter. Each submitted guess is checked against **every still-unsolved board** in the same call, producing one `GuessFeedback` per board, and increments the shared counter exactly once regardless of `wordCount`. The puzzle ends when every board is solved or the shared counter reaches `maxAttempts`, whichever first.
+- **Server-side resolution still mandatory**: even with no room/session, guess feedback and win/loss determination happen server-side only — same principle as multiplayer (see Word resolution authority above). A `POST /daily/:mode/guess`-style endpoint (planned) validates the guess against the date-derived word(s) and returns only feedback, never the secret word(s) before they're solved or attempts are exhausted.
+- **No live/realtime concern**: since there's no other player to broadcast to, this does not need Socket.io — plain Fastify HTTP routes under `presentation/http/routes/daily/` suffice. Client-side result/streak history (if any) is `localStorage`-only for now; the backend does not persist per-player daily results.
+
+### Entry screen split: Multiplayer vs Singleplayer (planned)
+
+**Goal**: the app's entry screen — today `RoomChoiceScreen` (`frontend/src/App.tsx`, rendered as `#room-choice-screen` whenever there's a `nickname` but no `room`) — only offers the multiplayer create/join flow. Split it into two clearly separated sections so a player can go straight into a daily singleplayer game without touching room creation at all: an `#multiplayer-section` div (today's flow, unchanged) and a new `#singleplayer-section` div (entry cards for Termo, Dueto, Quarteto).
+
+Tasks:
+
+1. **Frontend layout**: in `RoomChoiceScreen`, wrap the existing `#create-room-section`, `#join-room-section`, and `<PublicRoomBrowser>` in one new `#multiplayer-section` div (no behavior change). Add a sibling `#singleplayer-section` div with one card/button per daily game (Termo, Dueto, Quarteto) — these don't need room creation, just navigation.
+2. **App-level navigation for daily games**: `App()` (`App.tsx`) currently branches on `room` state alone (`!room` → `RoomChoiceScreen`, `room.status === 'lobby'` → `Lobby`, else the matching game room). Add a sibling `dailyMode: DailyGameMode | null` state, set when a singleplayer card is clicked and cleared on back — same shape as the existing `room`/`handleBack` pair — and render a new `DailyGameRoom` in that branch instead of the room flow. No `RoomRecord`, `playerId`-as-room-seat, or socket state is involved.
+3. **Backend routes/use-cases**: implement the pieces already specified above under "Singleplayer Daily Games" — `DailyWordResolver` (`infrastructure/persistence/words/`), the `TermoMode`/`DuetoMode`/`QuartetoMode` strategies (`application/game-modes/daily-modes/`), `application/use-cases/daily/` (`resolve-daily-puzzle`, `submit-daily-guess`), and `GET /daily/:mode` + `POST /daily/:mode/guess` routes (`presentation/http/routes/daily/`).
+4. **Frontend data layer**: `lib/api.ts` gets `getDailyPuzzle(mode)` / `submitDailyGuess(mode, guess)`; a new `hooks/useDailyGame.ts` (planned) owns the per-board feedback array, the shared attempt counter, and win/loss state, calling those two endpoints only — no `useSocket`.
+5. **Frontend game screen**: `DailyGameRoom` (or three thin per-mode pages `Termo`/`Dueto`/`Quarteto` that all render it with a different `mode` prop) reuses `WordGrid`/`Keyboard`/`Tile`. For Dueto/Quarteto, render `wordCount` `WordGrid`s side by side, all fed by one shared `Keyboard`/`useGuessInput` buffer and one shared attempt counter — the "own grid, no fixed `totalRows`" pattern used for the multiplayer own-board applies to every board here too, since it's still the same single player.
+6. **Local progress persistence**: `lib/daily-progress-storage.ts` (planned) keyed by `mode` + date, storing the player's attempts/result in `localStorage` — matches the product decision that daily-game history is client-local only, no per-player server-side record.
 
 ## Word Dictionary & Matching Rules
 

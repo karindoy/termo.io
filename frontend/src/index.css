@@ -105,6 +105,58 @@ h2 {
   color: var(--color-text-muted);
 }
 
+/* Entry screen: multiplayer vs singleplayer sections */
+
+.section-heading {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin: 4px 0;
+}
+
+#room-choice-columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+#multiplayer-section,
+#singleplayer-section {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  #room-choice-columns {
+    flex-direction: column;
+  }
+}
+
+.daily-game-option {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.daily-game-option-label {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.daily-game-option-description {
+  font-size: 0.8rem;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
 /* Form controls */
 
 .input,
@@ -211,6 +263,14 @@ label.field {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 24px;
   align-items: start;
+  width: 100%;
+}
+
+.daily-boards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
   width: 100%;
 }
 

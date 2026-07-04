@@ -16,6 +16,14 @@ class FixedWordRepository implements WordRepository {
   isValidGuess(): boolean {
     return true;
   }
+
+  getWordAt(): Word {
+    return Word.create('TERMO');
+  }
+
+  size(): number {
+    return 1;
+  }
 }
 
 function createDeps(): CreateRoomDeps {

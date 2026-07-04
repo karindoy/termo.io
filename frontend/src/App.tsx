@@ -13,16 +13,18 @@ import { PlacarModal, type PlacarWordRow } from './components/PlacarModal';
 import { CountdownDisplay } from './components/CountdownDisplay';
 import { Lobby } from './components/Lobby';
 import { PublicRoomBrowser } from './components/PublicRoomBrowser';
+import { DailyGameRoom } from './components/DailyGameRoom';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
 import { clearStoredRoomCode, getStoredRoomCode, storeRoomCode } from './lib/active-room-storage';
 import { createRoom, getRoom, RoomLookupError } from './lib/api';
-import type { RoomMode, RoomRecord } from './lib/types';
+import type { DailyGameMode, RoomMode, RoomRecord } from './lib/types';
 
 const playerId = getOrCreatePlayerId();
 
 export function App() {
   const [nickname, setNickname] = useState<string | null>(getStoredNickname());
   const [room, setRoom] = useState<RoomRecord | null>(null);
+  const [dailyMode, setDailyMode] = useState<DailyGameMode | null>(null);
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
@@ -70,8 +72,12 @@ export function App() {
     );
   }
 
+  if (dailyMode) {
+    return <DailyGameRoom mode={dailyMode} onBack={() => setDailyMode(null)} />;
+  }
+
   if (!room) {
-    return <RoomChoiceScreen nickname={nickname} onRoomReady={handleRoomReady} />;
+    return <RoomChoiceScreen nickname={nickname} onRoomReady={handleRoomReady} onSelectDaily={setDailyMode} />;
   }
 
   if (room.status === 'lobby') {
@@ -109,12 +115,20 @@ function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
   );
 }
 
+const DAILY_GAME_OPTIONS: { mode: DailyGameMode; label: string; description: string }[] = [
+  { mode: 'termo', label: 'Termo', description: '1 palavra · 6 tentativas' },
+  { mode: 'dueto', label: 'Dueto', description: '2 palavras · 7 tentativas' },
+  { mode: 'quarteto', label: 'Quarteto', description: '4 palavras · 9 tentativas' },
+];
+
 function RoomChoiceScreen({
   nickname,
   onRoomReady,
+  onSelectDaily,
 }: {
   nickname: string;
   onRoomReady: (room: RoomRecord) => void;
+  onSelectDaily: (mode: DailyGameMode) => void;
 }) {
   const [mode, setMode] = useState<RoomMode>('championship');
   const [isPublic, setIsPublic] = useState(true);
@@ -150,41 +164,64 @@ function RoomChoiceScreen({
   }
 
   return (
-    <div id="room-choice-screen" className="centered-shell" style={{ maxWidth: 420 }}>
+    <div id="room-choice-screen" className="centered-shell" style={{ maxWidth: 760 }}>
       <h1>termo.io</h1>
 
-      <section id="create-room-section" className="card">
-        <h2>Criar uma sala</h2>
-        <select className="input" value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
-          <option value="championship">Campeonato</option>
-          <option value="race">Corrida</option>
-        </select>
-        <label className="checkbox-field">
-          <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
-          Sala pública (aparece na lista de salas)
-        </label>
-        <button className="btn btn-primary" disabled={loading} onClick={handleCreate}>
-          Criar sala
-        </button>
-      </section>
+      <div id="room-choice-columns">
+        <div id="multiplayer-section">
+          <h2 className="section-heading">Multiplayer</h2>
 
-      <section id="join-room-section" className="card">
-        <h2>Entrar com código</h2>
-        <input
-          className="input"
-          value={joinCode}
-          onChange={(event) => setJoinCode(event.target.value)}
-          placeholder="Código da sala"
-          maxLength={8}
-        />
-        <button className="btn" disabled={loading} onClick={() => handleJoinByCode(joinCode)}>
-          Entrar
-        </button>
-      </section>
+          <section id="create-room-section" className="card">
+            <h2>Criar uma sala</h2>
+            <select className="input" value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
+              <option value="championship">Campeonato</option>
+              <option value="race">Corrida</option>
+            </select>
+            <label className="checkbox-field">
+              <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
+              Sala pública (aparece na lista de salas)
+            </label>
+            <button className="btn btn-primary" disabled={loading} onClick={handleCreate}>
+              Criar sala
+            </button>
+          </section>
 
-      <PublicRoomBrowser onJoin={(code) => handleJoinByCode(code)} />
+          <section id="join-room-section" className="card">
+            <h2>Entrar com código</h2>
+            <input
+              className="input"
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value)}
+              placeholder="Código da sala"
+              maxLength={8}
+            />
+            <button className="btn" disabled={loading} onClick={() => handleJoinByCode(joinCode)}>
+              Entrar
+            </button>
+          </section>
 
-      {error && <p className="banner banner-error">{error}</p>}
+          <PublicRoomBrowser onJoin={(code) => handleJoinByCode(code)} />
+
+          {error && <p className="banner banner-error">{error}</p>}
+        </div>
+
+        <div id="singleplayer-section">
+          <h2 className="section-heading">Jogos diários (solo)</h2>
+          <section id="daily-games-section" className="card">
+            {DAILY_GAME_OPTIONS.map((option) => (
+              <button
+                key={option.mode}
+                id={`daily-game-${option.mode}`}
+                className="btn daily-game-option"
+                onClick={() => onSelectDaily(option.mode)}
+              >
+                <span className="daily-game-option-label">{option.label}</span>
+                <span className="daily-game-option-description">{option.description}</span>
+              </button>
+            ))}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }

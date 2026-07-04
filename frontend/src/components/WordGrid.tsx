@@ -13,10 +13,14 @@ const STATUS_COLOR: Record<LetterStatus, string> = {
   absent: '#334155',
 };
 
+// Only `feedback` is ever read below — this lets daily-game boards (which have no
+// playerId/nickname/createdAt, just a guess + its feedback) reuse the same grid.
+export type WordGridAttempt = Pick<Attempt, 'feedback'>;
+
 interface WordGridProps {
   gridId?: string;
   wordLength: number;
-  attempts: Attempt[];
+  attempts: WordGridAttempt[];
   /** Fixed-length array, one entry per cell ('' = empty), for the in-progress row. */
   activeGuess?: string[];
   /** Index of the cell the player is currently editing, within the active row. */
@@ -73,7 +77,7 @@ export function WordGrid({
   }, [activeRowShakeToken]);
 
   // 'null' = active input row, undefined = empty pre-rendered placeholder
-  const rows: (Attempt | null | undefined)[] = [...attempts];
+  const rows: (WordGridAttempt | null | undefined)[] = [...attempts];
   if (activeGuess !== undefined) rows.push(null);
   const targetLength = Math.max(rows.length, totalRows ?? 0);
   while (rows.length < targetLength) rows.push(undefined);

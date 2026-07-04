@@ -39,4 +39,12 @@ export class InMemoryWordRepository implements WordRepository {
   isValidGuess(value: string): boolean {
     return this.normalizedWords.has(normalizeWord(value));
   }
+
+  getWordAt(index: number): Word {
+    return Word.create(WORDS[index % WORDS.length]!);
+  }
+
+  size(): number {
+    return WORDS.length;
+  }
 }

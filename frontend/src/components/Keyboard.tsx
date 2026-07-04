@@ -14,8 +14,12 @@ const STATUS_PRIORITY: Record<LetterStatus, number> = {
   absent: 1,
 };
 
+// Only `feedback` is ever read below — lets daily-game boards (no playerId/nickname/
+// createdAt) feed the keyboard's letter-status coloring too.
+type KeyboardAttempt = Pick<Attempt, 'feedback'>;
+
 interface KeyboardProps {
-  attempts: Attempt[];
+  attempts: KeyboardAttempt[];
   onLetter: (letter: string) => void;
   onEnter: () => void;
   onBackspace: () => void;
@@ -58,7 +62,7 @@ export function Keyboard({ attempts, onLetter, onEnter, onBackspace, disabled }:
   );
 }
 
-function buildLetterStatusMap(attempts: Attempt[]): Record<string, LetterStatus | undefined> {
+function buildLetterStatusMap(attempts: KeyboardAttempt[]): Record<string, LetterStatus | undefined> {
   const map: Record<string, LetterStatus | undefined> = {};
   for (const attempt of attempts) {
     for (const letterFeedback of attempt.feedback) {

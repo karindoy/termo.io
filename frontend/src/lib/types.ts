@@ -177,3 +177,30 @@ export interface RaceGuessResult {
   winnerId: string | null;
   wordIndex: number;
 }
+
+export type DailyGameMode = 'termo' | 'dueto' | 'quarteto';
+
+export interface DailyModeConfig {
+  wordCount: number;
+  maxAttempts: number;
+}
+
+export interface DailyBoardAttempt {
+  guess: string;
+  feedback: GuessFeedback;
+  attemptNumber: number;
+}
+
+export interface DailyBoardResult {
+  attempts: DailyBoardAttempt[];
+  solved: boolean;
+  revealedWord: string | null;
+}
+
+export interface DailyPuzzleResult {
+  boards: DailyBoardResult[];
+  attemptsUsed: number;
+  maxAttempts: number;
+  finished: boolean;
+  won: boolean;
+}

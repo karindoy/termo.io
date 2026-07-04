@@ -1,8 +1,18 @@
-import type { RoomMode, RoomRecord, RoomSettings, RoomSummary } from './types';
+import type {
+  DailyGameMode,
+  DailyModeConfig,
+  DailyPuzzleResult,
+  RoomMode,
+  RoomRecord,
+  RoomSettings,
+  RoomSummary,
+} from './types';
 
 const API_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:4000';
 
 export class RoomLookupError extends Error {}
+
+export class DailyGuessError extends Error {}
 
 async function parseOrThrow(response: Response, fallbackMessage: string): Promise<RoomRecord> {
   if (!response.ok) {
@@ -64,4 +74,26 @@ export async function startGame(code: string, playerId: string, sessionSecret: s
   });
 
   return parseOrThrow(response, 'Não foi possível iniciar a partida');
+}
+
+export async function getDailyConfig(mode: DailyGameMode): Promise<DailyModeConfig> {
+  const response = await fetch(`${API_URL}/daily/${mode}/config`);
+  if (!response.ok) {
+    throw new DailyGuessError(`Não foi possível carregar o modo "${mode}"`);
+  }
+  return (await response.json()) as DailyModeConfig;
+}
+
+export async function submitDailyGuess(mode: DailyGameMode, guesses: string[]): Promise<DailyPuzzleResult> {
+  const response = await fetch(`${API_URL}/daily/${mode}/guess`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guesses }),
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new DailyGuessError(body?.message ?? 'Não foi possível enviar a tentativa');
+  }
+  return (await response.json()) as DailyPuzzleResult;
 }

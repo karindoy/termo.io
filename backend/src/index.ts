@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { env } from './infrastructure/config/env.js';
 import { healthRoute } from './presentation/http/routes/health.js';
 import { roomsRoutes } from './presentation/http/routes/rooms.js';
+import { dailyRoutes } from './presentation/http/routes/daily.js';
 import { registerChampionshipModeHandlers } from './presentation/sockets/handlers/register-championship-mode-handlers.js';
 import { registerRaceModeHandlers } from './presentation/sockets/handlers/register-race-mode-handlers.js';
 import { InMemoryWordRepository } from './infrastructure/persistence/words/in-memory-word-repository.js';
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   await app.register(healthRoute);
   await app.register((instance) => roomsRoutes(instance, roomDeps));
+  await app.register((instance) => dailyRoutes(instance, { wordRepository }));
   await app.register(cors, {
     origin: env.corsOrigin,
   });
