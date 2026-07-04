@@ -31,14 +31,61 @@ describe('WordRound', () => {
     expect(() => round.submitGuess('p2', 'Bia', 'PRATO')).not.toThrow();
   });
 
-  it('allPlayersExhausted is true only once every connected player hit the cap', () => {
+  it('allPlayersFinished is true only once every connected player hit the cap or solved', () => {
     const round = new WordRound(Word.create('TERMO'), 1, 60_000);
 
     round.submitGuess('p1', 'Ana', 'PONTE');
-    expect(round.allPlayersExhausted(['p1', 'p2'])).toBe(false);
+    expect(round.allPlayersFinished(['p1', 'p2'])).toBe(false);
 
     round.submitGuess('p2', 'Bia', 'PRATO');
-    expect(round.allPlayersExhausted(['p1', 'p2'])).toBe(true);
+    expect(round.allPlayersFinished(['p1', 'p2'])).toBe(true);
+  });
+
+  it('allPlayersFinished treats a solved player as finished even with attempts left', () => {
+    const round = new WordRound(Word.create('TERMO'), 6, 60_000);
+
+    round.submitGuess('p1', 'Ana', 'TERMO');
+    expect(round.allPlayersFinished(['p1', 'p2'])).toBe(false);
+
+    round.submitGuess('p2', 'Bia', 'PONTE');
+    round.submitGuess('p2', 'Bia', 'PRATO');
+    expect(round.allPlayersFinished(['p1', 'p2'])).toBe(false);
+
+    for (let i = 0; i < 4; i += 1) round.submitGuess('p2', 'Bia', 'PRATO');
+    expect(round.allPlayersFinished(['p1', 'p2'])).toBe(true);
+  });
+
+  it('rejects further guesses from a player who already solved the word', () => {
+    const round = new WordRound(Word.create('TERMO'), 6, 60_000);
+    round.submitGuess('p1', 'Ana', 'TERMO');
+
+    expect(() => round.submitGuess('p1', 'Ana', 'PONTE')).toThrow(AttemptsExceededError);
+  });
+
+  it('bestSolver picks the fewest-attempts solver, tie-broken by who solved it first', () => {
+    const round = new WordRound(Word.create('TERMO'), 6, 60_000);
+
+    round.submitGuess('p1', 'Ana', 'PONTE');
+    round.submitGuess('p1', 'Ana', 'TERMO'); // p1 solves in 2 attempts
+    round.submitGuess('p2', 'Bia', 'TERMO'); // p2 solves in 1 attempt
+
+    expect(round.bestSolver()).toMatchObject({ playerId: 'p2' });
+  });
+
+  it('bestSolver breaks a same-attempt-count tie by earliest solve', () => {
+    const round = new WordRound(Word.create('TERMO'), 6, 60_000);
+
+    round.submitGuess('p2', 'Bia', 'TERMO'); // solves first, in 1 attempt
+    round.submitGuess('p1', 'Ana', 'TERMO'); // also solves in 1 attempt, but later
+
+    expect(round.bestSolver()).toMatchObject({ playerId: 'p2' });
+  });
+
+  it('bestSolver returns null when nobody has solved the word yet', () => {
+    const round = new WordRound(Word.create('TERMO'), 6, 60_000);
+    round.submitGuess('p1', 'Ana', 'PONTE');
+
+    expect(round.bestSolver()).toBeNull();
   });
 
   it('isExpired compares elapsed time against timeLimitMs', () => {

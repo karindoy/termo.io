@@ -221,8 +221,14 @@ function ChampionshipGameRoom({
   const isTieBreakSpectator =
     round?.phase === 'tie-break' && round.tieBreakCandidates != null && !round.tieBreakCandidates.includes(playerId);
   const isRoundOver = solvedBy !== null;
+  // The word stays open for everyone else even after this player solves it — the round only
+  // advances once every connected player has solved it or run out of attempts, so the point
+  // can go to whoever needed the fewest guesses. So a personally-finished player (solved, or
+  // out of attempts) just waits here rather than the whole room stopping at once.
+  const hasSolvedCurrentWord = myAttempts.some((attempt) => attempt.feedback.every((letter) => letter.status === 'correct'));
   const isAttemptsExhausted = round != null && myAttempts.length >= round.maxAttempts;
-  const canGuess = !finished && round != null && !isTieBreakSpectator && !isRoundOver && !isAttemptsExhausted;
+  const hasFinishedWord = hasSolvedCurrentWord || isAttemptsExhausted;
+  const canGuess = !finished && round != null && !isTieBreakSpectator && !isRoundOver && !hasFinishedWord;
 
   const guessInput = useGuessInput(wordLength, canGuess, round?.roundSequence);
 
@@ -306,8 +312,13 @@ function ChampionshipGameRoom({
     if (isTieBreakSpectator) {
       return { message: '👀 Você não está no desempate — aguarde o resultado.', type: 'warning' as const };
     }
+    if (hasFinishedWord && !isRoundOver && !finished) {
+      return hasSolvedCurrentWord
+        ? { message: '✅ Você acertou! Aguardando os outros jogadores…', type: 'warning' as const }
+        : { message: '❌ Suas tentativas acabaram — aguardando os outros jogadores…', type: 'warning' as const };
+    }
     return null;
-  }, [isTieBreakSpectator]);
+  }, [isTieBreakSpectator, hasFinishedWord, hasSolvedCurrentWord, isRoundOver, finished]);
 
   const placarHeadline = finished
     ? `🏆 ${finished.winnerIds.map((id) => players.find((p) => p.playerId === id)?.nickname ?? 'Alguém').join(', ')} venceu!`

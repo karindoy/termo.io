@@ -112,18 +112,33 @@ export class ChampionshipMode extends EventEmitter implements GameMode {
   private checkRoundCompletion(): void {
     const game = this.requireGame();
     const round = game.currentRound;
-    const connectedIds = Array.from(this.requireRoom().players.keys());
 
-    if (round.solvedBy) {
-      this.resolveRound('solved', round.solvedBy);
-    } else if (round.allPlayersExhausted(connectedIds)) {
-      if (!round.extraAttemptsGranted) {
-        round.grantExtraAttempts(2);
-        this.emit('round:extra-attempts', this.currentRoundSnapshot());
-      } else {
-        this.resolveRound('exhausted', null);
-      }
+    // The word stays open — even after someone solves it — until every player still eligible
+    // to guess it has either solved it themselves or run out of attempts, so the round can
+    // award the point to whoever solved it in the fewest attempts rather than whoever merely
+    // solved it first. During a tie-break, only the tied candidates are eligible — everyone
+    // else in the room is barred from guessing and would never "finish", so they must not be
+    // counted or the round would hang until its timeout every time.
+    if (!round.allPlayersFinished(this.eligiblePlayerIds(game))) return;
+
+    const best = round.bestSolver();
+    if (best) {
+      this.resolveRound('solved', best.playerId);
+    } else if (!round.extraAttemptsGranted) {
+      round.grantExtraAttempts(2);
+      this.emit('round:extra-attempts', this.currentRoundSnapshot());
+    } else {
+      this.resolveRound('exhausted', null);
     }
+  }
+
+  private eligiblePlayerIds(game: Game): string[] {
+    const connectedIds = Array.from(this.requireRoom().players.keys());
+    if (game.phase === 'tie-break' && game.tieBreakCandidates) {
+      const candidates = game.tieBreakCandidates;
+      return connectedIds.filter((playerId) => candidates.includes(playerId));
+    }
+    return connectedIds;
   }
 
   private resolveRound(reason: RoundResolutionReason, winnerId: string | null): void {
@@ -154,7 +169,10 @@ export class ChampionshipMode extends EventEmitter implements GameMode {
   private scheduleTimeout(): void {
     const game = this.requireGame();
     this.timeoutHandle = setTimeout(() => {
-      this.resolveRound('timeout', null);
+      // Some players may have already solved the word before time ran out for the
+      // stragglers — the fastest-by-attempts of them still wins the point.
+      const best = game.currentRound.bestSolver();
+      this.resolveRound(best ? 'solved' : 'timeout', best?.playerId ?? null);
     }, game.currentRound.timeLimitMs);
   }
 
