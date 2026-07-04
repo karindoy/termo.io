@@ -31,6 +31,8 @@ interface WordGridProps {
   correctWords?: number;
   /** Session-level wrong word count shown above the grid. */
   wrongWords?: number;
+  /** Bump this value to shake the active row (e.g. guess rejected as not in the wordlist). */
+  activeRowShakeToken?: number;
 }
 
 export function WordGrid({
@@ -44,6 +46,7 @@ export function WordGrid({
   totalRows,
   correctWords,
   wrongWords,
+  activeRowShakeToken,
 }: WordGridProps) {
   const [revealedCount, setRevealedCount] = useState(attempts.length);
   const previousLength = useRef(attempts.length);
@@ -57,6 +60,17 @@ export function WordGrid({
     }
     previousLength.current = attempts.length;
   }, [attempts.length]);
+
+  const [isActiveRowShaking, setIsActiveRowShaking] = useState(false);
+  const previousShakeToken = useRef(activeRowShakeToken);
+
+  useEffect(() => {
+    if (activeRowShakeToken === undefined || activeRowShakeToken === previousShakeToken.current) return;
+    previousShakeToken.current = activeRowShakeToken;
+    setIsActiveRowShaking(true);
+    const timeout = setTimeout(() => setIsActiveRowShaking(false), 500);
+    return () => clearTimeout(timeout);
+  }, [activeRowShakeToken]);
 
   // 'null' = active input row, undefined = empty pre-rendered placeholder
   const rows: (Attempt | null | undefined)[] = [...attempts];
@@ -76,7 +90,11 @@ export function WordGrid({
       )}
     <div id={gridId} className="word-grid">
       {rows.map((row, rowIndex) => (
-        <div key={rowIndex} id={gridId ? `${gridId}-r${rowIndex}` : undefined} className="word-row">
+        <div
+          key={rowIndex}
+          id={gridId ? `${gridId}-r${rowIndex}` : undefined}
+          className={row === null && isActiveRowShaking ? 'word-row word-row-shake' : 'word-row'}
+        >
           {Array.from({ length: wordLength }).map((_, columnIndex) => {
             const tileId = gridId ? `${gridId}-r${rowIndex}-c${columnIndex}` : undefined;
             if (row === undefined) {

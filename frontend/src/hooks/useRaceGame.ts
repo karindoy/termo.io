@@ -37,6 +37,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
   const [revealHistory, setRevealHistory] = useState<RaceRevealInfo[]>([]);
   const [finished, setFinished] = useState<RaceFinishedPayload | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [guessRejectedToken, setGuessRejectedToken] = useState(0);
 
   function setProgressEntry(entry: PlayerProgressSnapshot): void {
     wordIndexRef.current[entry.playerId] = entry.wordIndex;
@@ -129,6 +130,8 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
       }));
     });
 
+    socket.on('guess:error', () => setGuessRejectedToken((token) => token + 1));
+
     return () => {
       clearCountdownInterval();
       socket.disconnect();
@@ -164,6 +167,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
     sessionStats,
     finished,
     countdown,
+    guessRejectedToken,
     submitGuess,
     restartGame,
   };

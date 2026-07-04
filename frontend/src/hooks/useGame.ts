@@ -53,6 +53,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
   const [playerStats, setPlayerStats] = useState<Record<string, { correct: number; wrong: number }>>({});
   const [wordHistory, setWordHistory] = useState<WordHistoryEntry[]>([]);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [guessRejectedToken, setGuessRejectedToken] = useState(0);
 
   const playersRef = useRef<Player[]>([]);
 
@@ -194,7 +195,10 @@ export function useGame(code: string, playerId: string, nickname: string) {
       if (result.solved) setSolvedBy(result.winnerId);
     });
 
-    socket.on('guess:error', (payload: { message: string }) => setError(payload.message));
+    socket.on('guess:error', (payload: { message: string }) => {
+      setError(payload.message);
+      setGuessRejectedToken((token) => token + 1);
+    });
     socket.on('room:error', (payload: { message: string }) => setError(payload.message));
 
     return () => {
@@ -226,6 +230,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
     playerStats,
     wordHistory,
     countdown,
+    guessRejectedToken,
     submitGuess,
     restartGame,
   };

@@ -202,7 +202,7 @@ function ChampionshipGameRoom({
   isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, players, attempts, solvedBy, round, reveal, finished, error, extraAttempts, playerStats, wordHistory, countdown, submitGuess, restartGame } = useGame(
+  const { connected, players, attempts, solvedBy, round, reveal, finished, error, extraAttempts, playerStats, wordHistory, countdown, guessRejectedToken, submitGuess, restartGame } = useGame(
     code,
     playerId,
     nickname,
@@ -229,7 +229,6 @@ function ChampionshipGameRoom({
   function handleEnter(): void {
     if (!canGuess || !guessInput.isComplete) return;
     submitGuess(guessInput.guess);
-    guessInput.reset();
   }
 
   useEffect(() => {
@@ -250,6 +249,15 @@ function ChampionshipGameRoom({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
+
+  // Only clear the active row once the server actually accepted the guess as a valid
+  // word (it shows up as a new attempt) — a rejected (not-in-wordlist) guess leaves the
+  // letters in place and just shakes the row instead, via guessRejectedToken.
+  const myAttemptsCountRef = useRef(myAttempts.length);
+  useEffect(() => {
+    if (myAttempts.length > myAttemptsCountRef.current) guessInput.reset();
+    myAttemptsCountRef.current = myAttempts.length;
+  }, [myAttempts.length]);
 
   const otherPlayerRows = round?.maxAttempts ?? 6;
 
@@ -371,6 +379,7 @@ function ChampionshipGameRoom({
               activeCursor={canGuess ? guessInput.cursor : undefined}
               activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
               onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+              activeRowShakeToken={guessRejectedToken}
               correctWords={playerStats[playerId]?.correct ?? 0}
               wrongWords={playerStats[playerId]?.wrong ?? 0}
             />
@@ -438,7 +447,7 @@ function RaceGameRoom({
   isHost: boolean;
   onBack: () => void;
 }) {
-  const { connected, config, players, progress, attemptsByPlayer, revealHistory, sessionStats, finished, countdown, submitGuess, restartGame } =
+  const { connected, config, players, progress, attemptsByPlayer, revealHistory, sessionStats, finished, countdown, guessRejectedToken, submitGuess, restartGame } =
     useRaceGame(code, playerId, nickname);
   const [placarDismissed, setPlacarDismissed] = useState(false);
 
@@ -487,7 +496,6 @@ function RaceGameRoom({
   function handleEnter(): void {
     if (!canGuess || !guessInput.isComplete) return;
     submitGuess(guessInput.guess);
-    guessInput.reset();
   }
 
   useEffect(() => {
@@ -508,6 +516,15 @@ function RaceGameRoom({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
+
+  // Only clear the active row once the server actually accepted the guess as a valid
+  // word (it shows up as a new attempt) — a rejected (not-in-wordlist) guess leaves the
+  // letters in place and just shakes the row instead, via guessRejectedToken.
+  const myAttemptsCountRef = useRef(myAttempts.length);
+  useEffect(() => {
+    if (myAttempts.length > myAttemptsCountRef.current) guessInput.reset();
+    myAttemptsCountRef.current = myAttempts.length;
+  }, [myAttempts.length]);
 
   return (
     <div id="race-room" className="app-shell">
@@ -557,6 +574,7 @@ function RaceGameRoom({
               activeCursor={canGuess ? guessInput.cursor : undefined}
               activeLastEdited={canGuess ? guessInput.lastEdited : undefined}
               onActiveCellClick={canGuess ? guessInput.setCursor : undefined}
+              activeRowShakeToken={guessRejectedToken}
               correctWords={sessionStats[playerId]?.correct ?? 0}
               wrongWords={sessionStats[playerId]?.wrong ?? 0}
             />
