@@ -58,7 +58,7 @@ test.describe.serial('termo.io — max players (50)', () => {
     await Promise.all(players.map((player) => expect(player.page.locator('#race-room')).toBeVisible({ timeout: 20_000 })));
 
     for (let row = 0; row < 4; row += 1) {
-      await Promise.all(players.map((player) => submitGuess(player.page, words.wrongGuess, row)));
+      await Promise.all(players.map((player) => submitGuess(player.page, words.wrongGuess)));
       if (row === 2) {
         await winner.page.screenshot({ path: join(screenshotDir, 'game.png'), fullPage: true });
       }
@@ -66,8 +66,8 @@ test.describe.serial('termo.io — max players (50)', () => {
 
     // Every non-winner must burn their 5th guess before the winner's — the instant the
     // winner solves, RaceGame.phase flips to 'finished' and further guesses are rejected.
-    await Promise.all(losers.map((player) => submitGuess(player.page, words.wrongGuess, 4)));
-    await submitGuess(winner.page, words.corridaWord, 4);
+    await Promise.all(losers.map((player) => submitGuess(player.page, words.wrongGuess)));
+    await submitGuess(winner.page, words.corridaWord);
 
     await expect(winner.page.locator('#placar-modal-overlay')).toBeVisible({ timeout: 20_000 });
     await winner.page.screenshot({ path: join(screenshotDir, 'placar.png'), fullPage: true });
@@ -105,23 +105,23 @@ test.describe.serial('termo.io — max players (50)', () => {
 
     // Round 1: playerA wins.
     for (let row = 0; row < 4; row += 1) {
-      await Promise.all(players.map((player) => submitGuess(player.page, words.wrongGuess, row)));
+      await Promise.all(players.map((player) => submitGuess(player.page, words.wrongGuess)));
       if (row === 2) {
         await playerA.page.screenshot({ path: join(screenshotDir, 'game.png'), fullPage: true });
       }
     }
     const round1Losers = players.filter((player) => player !== playerA);
-    await Promise.all(round1Losers.map((player) => submitGuess(player.page, words.wrongGuess, 4)));
+    await Promise.all(round1Losers.map((player) => submitGuess(player.page, words.wrongGuess)));
     await submitWinningGuess(playerA.page, words.championshipRound1Word);
 
     await expect(playerA.page.locator('#round-status')).toContainText('Palavra 2 de 2', { timeout: 20_000 });
 
     // Round 2: playerB wins, tying playerA 1-1 and triggering the tie-break.
     for (let row = 0; row < 4; row += 1) {
-      await Promise.all(players.map((player) => submitGuess(player.page, words.wrongGuess, row)));
+      await Promise.all(players.map((player) => submitGuess(player.page, words.wrongGuess)));
     }
     const round2Losers = players.filter((player) => player !== playerB);
-    await Promise.all(round2Losers.map((player) => submitGuess(player.page, words.wrongGuess, 4)));
+    await Promise.all(round2Losers.map((player) => submitGuess(player.page, words.wrongGuess)));
     await submitWinningGuess(playerB.page, words.championshipRound2Word);
 
     await expect(spectator.page.locator('#round-status')).toContainText('Desempate', { timeout: 20_000 });
@@ -131,9 +131,9 @@ test.describe.serial('termo.io — max players (50)', () => {
     // Tie-break: only playerA and playerB may guess (tieBreakMaxAttempts is fixed at 3
     // by the backend); playerA wins it to become the sole overall champion.
     for (let row = 0; row < 2; row += 1) {
-      await Promise.all([submitGuess(playerA.page, words.wrongGuess, row), submitGuess(playerB.page, words.wrongGuess, row)]);
+      await Promise.all([submitGuess(playerA.page, words.wrongGuess), submitGuess(playerB.page, words.wrongGuess)]);
     }
-    await submitGuess(playerB.page, words.wrongGuess, 2);
+    await submitGuess(playerB.page, words.wrongGuess);
     await submitWinningGuess(playerA.page, words.tieBreakWord);
 
     await expect(playerA.page.locator('#placar-modal-overlay')).toBeVisible({ timeout: 20_000 });

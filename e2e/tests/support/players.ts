@@ -56,15 +56,34 @@ export async function joinRoomThrottled(
   }
 }
 
+const MY_WORD_GRID_ID = 'my-word';
+
+// The currently-active (still-editable) row is the only one WordGrid ever attaches an
+// onClick handler to (see WordGrid.tsx's onActiveCellClick), which is what gives its tiles
+// the tile-clickable class. That row's index is this player's own attempts.length at this
+// instant — reading it from the DOM keeps each player's guess self-consistent even when
+// their local state has lagged behind the rest of a concurrent guess "wave".
+async function getActiveRow(page: Page): Promise<number> {
+  const activeTile = page.locator(`#${MY_WORD_GRID_ID} .tile-clickable`).first();
+  await activeTile.waitFor({ state: 'attached', timeout: 30_000 });
+  const id = await activeTile.getAttribute('id');
+  const match = id ? new RegExp(`^${MY_WORD_GRID_ID}-r(\\d+)-c\\d+$`).exec(id) : null;
+  if (!match) throw new Error(`submitGuess: could not parse active row index from tile id "${id}"`);
+  return Number(match[1]);
+}
+
 // Types a guess via the physical keyboard (the app listens on `window` keydown, so no
-// element needs focus) and waits for that row's feedback to finish rendering before
-// returning, keeping guess "waves" across many players in sync round by round.
-export async function submitGuess(page: Page, word: string, row: number): Promise<void> {
+// element needs focus). Reads this player's own currently-active row from the DOM right
+// before typing, rather than trusting a shared loop counter, so a player whose local
+// attempt count has lagged behind the rest of a concurrent wave still waits on the row
+// that's actually about to receive feedback.
+export async function submitGuess(page: Page, word: string): Promise<void> {
+  const row = await getActiveRow(page);
   await page.keyboard.type(word.toUpperCase());
   await page.keyboard.press('Enter');
   await page.waitForSelector(
-    `#my-word-r${row}-c0.tile-correct, #my-word-r${row}-c0.tile-present, #my-word-r${row}-c0.tile-absent`,
-    { timeout: 15_000 },
+    `#${MY_WORD_GRID_ID}-r${row}-c0.tile-correct, #${MY_WORD_GRID_ID}-r${row}-c0.tile-present, #${MY_WORD_GRID_ID}-r${row}-c0.tile-absent, #${MY_WORD_GRID_ID}-r${row}-c0.tile-flip`,
+    { timeout: 30_000 },
   );
 }
 
