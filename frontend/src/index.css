@@ -24,6 +24,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow-x: hidden;
 }
 
 button {
@@ -39,6 +40,7 @@ h2 {
 
 .app-shell {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -427,6 +429,147 @@ label.field {
   color: var(--color-text-muted);
 }
 
+/* Daily stats modal (post-game "progresso" summary) */
+
+.stats-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  padding: 20px 22px;
+  gap: 12px;
+}
+
+.stats-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.stats-modal-close:hover {
+  color: var(--color-text);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.stats-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stats-tile-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stats-tile-label {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.stats-distribution {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-section-title {
+  margin: 0 0 8px;
+  font-weight: 800;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.stats-dist-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats-dist-label {
+  width: 16px;
+  flex-shrink: 0;
+  font-weight: 700;
+  text-align: center;
+}
+
+.stats-dist-track {
+  flex: 1;
+  display: flex;
+}
+
+.stats-dist-bar {
+  background: var(--color-info);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-align: right;
+  min-width: 24px;
+}
+
+.stats-dist-bar-loss {
+  background: var(--key-default);
+}
+
+.stats-dist-empty {
+  min-width: 24px;
+  background: var(--color-absent);
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 3px;
+  text-align: center;
+}
+
+.stats-modal-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stats-countdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.stats-countdown-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.stats-countdown-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-share-btn {
+  white-space: nowrap;
+}
+
 /* Big animated countdown (pre-start / pre-rematch) */
 
 .countdown-display {
@@ -446,7 +589,7 @@ label.field {
 }
 
 .countdown-number {
-  font-size: 7rem;
+  font-size: clamp(3.5rem, 18vw, 7rem);
   font-weight: 900;
   line-height: 1;
   color: var(--color-gold);
@@ -654,15 +797,15 @@ label.field {
 }
 
 .tile {
-  width: 44px;
-  height: 44px;
+  width: clamp(32px, 9vw, 44px);
+  height: clamp(32px, 9vw, 44px);
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--tile-border-empty);
   border-radius: 4px;
   font-weight: 800;
-  font-size: 1.3rem;
+  font-size: clamp(1rem, 4vw, 1.3rem);
   text-transform: uppercase;
   color: #fff;
   background: transparent;
@@ -670,10 +813,16 @@ label.field {
 
 .tile-filled {
   border-color: var(--tile-border-filled);
+  background: rgba(2, 6, 23, 0.5);
 }
 
 .tile-clickable {
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tile-clickable.tile-filled {
+  background: rgba(2, 6, 23, 0.5);
 }
 
 .tile-cursor {
@@ -802,20 +951,20 @@ label.field {
 
 .keyboard-row {
   display: flex;
-  gap: 5px;
+  gap: clamp(3px, 1vw, 5px);
   justify-content: center;
 }
 
 .key {
-  min-width: 43px;
-  height: 58px;
-  padding: 0 8px;
+  min-width: clamp(30px, 8.5vw, 43px);
+  height: clamp(46px, 12vw, 58px);
+  padding: 0 clamp(4px, 1vw, 8px);
   background: var(--key-default);
   color: #fff;
   border: none;
   border-radius: 6px;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: clamp(0.75rem, 3vw, 0.95rem);
   text-transform: uppercase;
   cursor: pointer;
   transition: filter 0.15s, transform 0.1s;
@@ -830,15 +979,15 @@ label.field {
 }
 
 .key-wide {
-  padding: 0 12px;
-  min-width: 65px;
-  font-size: 0.8rem;
+  padding: 0 clamp(6px, 2vw, 12px);
+  min-width: clamp(42px, 11vw, 65px);
+  font-size: clamp(0.65rem, 2.5vw, 0.8rem);
 }
 
 .key-enter {
-  min-width: 87px;
-  font-size: 1.07rem;
-  padding: 0 35px;
+  min-width: clamp(50px, 13vw, 87px);
+  font-size: clamp(0.8rem, 3vw, 1.07rem);
+  padding: 0 clamp(10px, 3vw, 35px);
 }
 
 .key-correct {
@@ -851,4 +1000,78 @@ label.field {
 
 .key-absent {
   background: var(--color-absent);
+}
+
+/* Mobile layout (phones, ~360-640px wide) */
+
+@media (max-width: 640px) {
+  .app-main {
+    padding: 16px;
+  }
+
+  .app-header {
+    padding: 12px 16px;
+  }
+
+  .app-main-with-keyboard {
+    padding-bottom: 230px;
+  }
+
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .game-center {
+    order: 1;
+  }
+
+  .other-players-panel {
+    order: 2;
+  }
+
+  .game-aside {
+    display: none;
+  }
+
+  .other-players-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .other-players-list > * {
+    flex: 0 0 auto;
+  }
+
+  .daily-boards {
+    gap: 12px;
+  }
+
+  .daily-boards[data-count="2"],
+  .daily-boards[data-count="4"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
+  }
+
+  .daily-boards[data-count="2"] .word-grid,
+  .daily-boards[data-count="4"] .word-grid {
+    min-width: 0;
+  }
+
+  .daily-boards[data-count="2"] .tile,
+  .daily-boards[data-count="4"] .tile {
+    width: clamp(24px, 7vw, 34px);
+    height: clamp(24px, 7vw, 34px);
+    font-size: clamp(0.85rem, 3vw, 1.05rem);
+  }
+
+  .modal-card {
+    padding: 20px 16px;
+  }
+
+  .modal-card-large {
+    width: 94vw;
+    height: 85vh;
+  }
 }

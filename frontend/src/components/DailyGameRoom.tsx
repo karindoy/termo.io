@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDailyGame } from '../hooks/useDailyGame';
 import { useGuessInput } from '../hooks/useGuessInput';
+import { useBanner } from '../hooks/useBanner';
 import { WordGrid } from './WordGrid';
 import { Keyboard } from './Keyboard';
 import { BannerSlot } from './BannerSlot';
+import { DailyStatsModal } from './DailyStatsModal';
+import { buildDailyShareText } from '../lib/daily-share-text';
 import type { DailyGameMode } from '../lib/types';
 
 const WORD_LENGTH = 5;
@@ -15,11 +18,26 @@ const MODE_LABEL: Record<DailyGameMode, string> = {
 };
 
 export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: () => void }) {
-  const { config, guesses, result, loading, error, rejectedToken, submitGuess } = useDailyGame(mode);
+  const { config, guesses, result, stats, loading, error, rejectedToken, submitGuess } = useDailyGame(mode);
+  const { banner, show: showBanner } = useBanner();
 
   const finished = result?.finished ?? false;
   const canGuess = !finished && !loading && config != null;
   const guessInput = useGuessInput(WORD_LENGTH, canGuess, guesses.length);
+
+  const [statsOpen, setStatsOpen] = useState(false);
+  useEffect(() => {
+    if (finished) setStatsOpen(true);
+  }, [finished]);
+
+  function handleShare(): void {
+    if (!result) return;
+    const text = buildDailyShareText(mode, result.boards, result.attemptsUsed, result.maxAttempts, result.won);
+    navigator.clipboard
+      .writeText(text)
+      .then(() => showBanner('Resultado copiado!', 'success'))
+      .catch(() => showBanner('Não foi possível copiar o resultado', 'error'));
+  }
 
   function handleEnter(): void {
     if (!canGuess || !guessInput.isComplete) return;
@@ -51,13 +69,7 @@ export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: (
 
   const allAttempts = boards.flatMap((board) => board.attempts.map((attempt) => ({ feedback: attempt.feedback })));
 
-  const fallbackBanner = finished
-    ? result?.won
-      ? { message: '🎉 Você acertou todas as palavras de hoje!', type: 'success' as const }
-      : { message: `❌ Suas tentativas acabaram. Volte amanhã para um novo desafio!`, type: 'warning' as const }
-    : error
-      ? { message: error, type: 'error' as const }
-      : null;
+  const fallbackBanner = error ? { message: error, type: 'error' as const } : null;
 
   return (
     <div id="daily-game-room" className="app-shell">
@@ -67,6 +79,11 @@ export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: (
           <span>
             Tentativas: {guesses.length}/{maxAttempts}
           </span>
+          {finished && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setStatsOpen(true)}>
+              Progresso
+            </button>
+          )}
           <button className="btn btn-ghost btn-sm" onClick={onBack}>
             Voltar
           </button>
@@ -74,9 +91,9 @@ export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: (
       </header>
 
       <main id="daily-game-main" className="app-main app-main-with-keyboard">
-        <BannerSlot id="daily-game-banner-slot" banner={null} fallback={fallbackBanner} />
+        <BannerSlot id="daily-game-banner-slot" banner={banner} fallback={fallbackBanner} />
 
-        <div id="daily-game-boards" className="daily-boards">
+        <div id="daily-game-boards" className="daily-boards" data-count={boards.length}>
           {boards.map((board, index) => (
             <WordGrid
               key={index}
@@ -103,6 +120,15 @@ export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: (
           disabled={!canGuess}
         />
       </div>
+
+      {statsOpen && stats && (
+        <DailyStatsModal
+          stats={stats}
+          maxAttempts={maxAttempts}
+          onDismiss={() => setStatsOpen(false)}
+          onShare={handleShare}
+        />
+      )}
     </div>
   );
 }

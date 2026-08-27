@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import type { DailyGameMode, DailyModeConfig, DailyPuzzleResult } from '../lib/types';
 import { DailyGuessError, getDailyConfig, submitDailyGuess } from '../lib/api';
 import { getStoredDailyGuesses, storeDailyGuesses } from '../lib/daily-progress-storage';
+import { type DailyStats, recordDailyResult } from '../lib/daily-stats-storage';
 
 export interface UseDailyGameResult {
   config: DailyModeConfig | null;
   guesses: string[];
   result: DailyPuzzleResult | null;
+  stats: DailyStats | null;
   loading: boolean;
   error: string | null;
   /** Bumps once per rejected guess, independent of message content, so the active row can
@@ -22,6 +24,7 @@ export function useDailyGame(mode: DailyGameMode): UseDailyGameResult {
   const [config, setConfig] = useState<DailyModeConfig | null>(null);
   const [guesses, setGuesses] = useState<string[]>([]);
   const [result, setResult] = useState<DailyPuzzleResult | null>(null);
+  const [stats, setStats] = useState<DailyStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rejectedToken, setRejectedToken] = useState(0);
@@ -30,6 +33,7 @@ export function useDailyGame(mode: DailyGameMode): UseDailyGameResult {
     let cancelled = false;
     setConfig(null);
     setResult(null);
+    setStats(null);
     setError(null);
 
     getDailyConfig(mode).then((value) => {
@@ -59,6 +63,12 @@ export function useDailyGame(mode: DailyGameMode): UseDailyGameResult {
     };
   }, [mode]);
 
+  useEffect(() => {
+    if (result?.finished) {
+      setStats(recordDailyResult(mode, result.won, result.attemptsUsed));
+    }
+  }, [mode, result]);
+
   const submitGuess = useCallback(
     async (guess: string) => {
       setError(null);
@@ -79,5 +89,5 @@ export function useDailyGame(mode: DailyGameMode): UseDailyGameResult {
     [guesses, mode],
   );
 
-  return { config, guesses, result, loading, error, rejectedToken, submitGuess };
+  return { config, guesses, result, stats, loading, error, rejectedToken, submitGuess };
 }
