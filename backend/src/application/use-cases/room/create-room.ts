@@ -13,6 +13,7 @@ export interface CreateRoomDeps {
   wordRepository: WordRepository;
   championshipRegistry: GameModeRegistry<ChampionshipMode>;
   raceRegistry: GameModeRegistry<RaceMode>;
+  instanceTag: string;
 }
 
 export interface CreateRoomInput {
@@ -24,7 +25,7 @@ export interface CreateRoomInput {
 }
 
 export async function createRoom(deps: CreateRoomDeps, input: CreateRoomInput): Promise<RoomRecord> {
-  const code = await generateUniqueRoomCode(deps.roomRepository);
+  const code = await generateUniqueRoomCode(deps.roomRepository, deps.instanceTag);
   const settings = createRoomSettings(input.settings);
 
   // The game only starts once the host calls start-game; here we just stand up
@@ -67,9 +68,9 @@ export async function createRoom(deps: CreateRoomDeps, input: CreateRoomInput): 
   return record;
 }
 
-async function generateUniqueRoomCode(roomRepository: RoomRepository): Promise<string> {
+async function generateUniqueRoomCode(roomRepository: RoomRepository, instanceTag: string): Promise<string> {
   for (let attempt = 0; attempt < CODE_GENERATION_ATTEMPTS; attempt++) {
-    const code = generateRoomCode();
+    const code = generateRoomCode(instanceTag);
     if (!(await roomRepository.findByCode(code))) return code;
   }
   throw new Error('Não foi possível gerar um código de sala único');

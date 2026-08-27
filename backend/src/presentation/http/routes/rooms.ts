@@ -101,7 +101,7 @@ export async function roomsRoutes(app: FastifyInstance, deps: RoomsRoutesDeps): 
     if (!ROOM_CODE_PATTERN.test(code) || !parsed.success) {
       return reply.status(400).send({ message: 'Dados de atualização de sala inválidos' });
     }
-    if (!deps.sessionStore.verify(code, parsed.data.playerId, parsed.data.sessionSecret)) {
+    if (!(await deps.sessionStore.verify(code, parsed.data.playerId, parsed.data.sessionSecret))) {
       return reply.status(401).send({ message: 'Sessão inválida — entre na sala novamente' });
     }
 
@@ -119,7 +119,7 @@ export async function roomsRoutes(app: FastifyInstance, deps: RoomsRoutesDeps): 
     if (!ROOM_CODE_PATTERN.test(code) || !parsed.success) {
       return reply.status(400).send({ message: 'Dados de início de partida inválidos' });
     }
-    if (!deps.sessionStore.verify(code, parsed.data.playerId, parsed.data.sessionSecret)) {
+    if (!(await deps.sessionStore.verify(code, parsed.data.playerId, parsed.data.sessionSecret))) {
       return reply.status(401).send({ message: 'Sessão inválida — entre na sala novamente' });
     }
 

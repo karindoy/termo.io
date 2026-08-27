@@ -77,7 +77,7 @@ export function useGame(code: string, playerId: string, nickname: string) {
   }
 
   useEffect(() => {
-    const socket = createSocket('championship');
+    const socket = createSocket('championship', code);
     socketRef.current = socket;
 
     socket.on('connect', () => {

@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { env } from './infrastructure/config/env.js';
 import { healthRoute } from './presentation/http/routes/health.js';
 import { roomsRoutes } from './presentation/http/routes/rooms.js';
@@ -11,7 +12,7 @@ import { createRedisClient } from './infrastructure/persistence/redis/redis-clie
 import { RedisRoomRepository } from './infrastructure/persistence/redis/redis-room-repository.js';
 import { GameModeRegistry } from './infrastructure/realtime/game-mode-registry.js';
 import { HostMigrationTracker } from './infrastructure/realtime/host-migration-tracker.js';
-import { PlayerSessionStore } from './infrastructure/realtime/player-session-store.js';
+import { RedisPlayerSessionStore } from './infrastructure/realtime/redis-player-session-store.js';
 import type { ChampionshipMode } from './application/game-modes/championship-mode.js';
 import type { RaceMode } from './application/game-modes/race-mode.js';
 import cors from '@fastify/cors';
@@ -27,11 +28,11 @@ async function main(): Promise<void> {
   const championshipRegistry = new GameModeRegistry<ChampionshipMode>();
   const raceRegistry = new GameModeRegistry<RaceMode>();
   const hostMigrationTracker = new HostMigrationTracker();
-  const sessionStore = new PlayerSessionStore();
+  const sessionStore = new RedisPlayerSessionStore(redis);
 
   await roomRepository.clearPublicLobbies();
 
-  const roomDeps = { roomRepository, wordRepository, championshipRegistry, raceRegistry, sessionStore };
+  const roomDeps = { roomRepository, wordRepository, championshipRegistry, raceRegistry, sessionStore, instanceTag: env.instanceTag };
 
   await app.register(helmet);
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
@@ -46,6 +47,7 @@ async function main(): Promise<void> {
   const io = new Server(app.server, {
     cors: { origin: env.corsOrigin },
   });
+  io.adapter(createAdapter(redis, redis.duplicate()));
 
   const restartRoomDeps = { roomRepository, wordRepository, championshipRegistry, raceRegistry };
   registerChampionshipModeHandlers(io.of('/championship'), championshipRegistry, roomDeps, hostMigrationTracker, sessionStore, restartRoomDeps);

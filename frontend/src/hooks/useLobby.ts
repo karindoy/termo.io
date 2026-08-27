@@ -17,7 +17,7 @@ export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: st
   const [countdown, setCountdown] = useState<number | null>(null);
 
   useEffect(() => {
-    const socket = createSocket(mode);
+    const socket = createSocket(mode, code);
     socketRef.current = socket;
 
     function clearCountdownInterval(): void {

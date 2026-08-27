@@ -11,7 +11,7 @@ import type { WordRepository } from '../../../domain/repositories/word-repositor
 import { RoomNotFoundError } from '../../../domain/errors/room-not-found-error.js';
 import { UnauthorizedHostActionError } from '../../../domain/errors/unauthorized-host-action-error.js';
 import { RoomAlreadyStartedError } from '../../../domain/errors/room-already-started-error.js';
-import { PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
+import { InMemoryPlayerSessionStore, type PlayerSessionStore } from '../../../infrastructure/realtime/player-session-store.js';
 
 class FixedWordRepository implements WordRepository {
   getRandomWord(): Word {
@@ -37,7 +37,8 @@ function createDeps(): CreateRoomDeps & { sessionStore: PlayerSessionStore } {
     wordRepository: new FixedWordRepository(),
     championshipRegistry: new GameModeRegistry<ChampionshipMode>(),
     raceRegistry: new GameModeRegistry<RaceMode>(),
-    sessionStore: new PlayerSessionStore(),
+    instanceTag: 'A',
+    sessionStore: new InMemoryPlayerSessionStore(),
   };
 }
 

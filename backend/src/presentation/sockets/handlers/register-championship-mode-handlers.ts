@@ -38,8 +38,8 @@ export function registerChampionshipModeHandlers(
     let joinedCode: string | null = null;
     let joinedPlayerId: string | null = null;
 
-    function rejectUnauthorized(code: string, playerId: string, sessionSecret: string, errorEvent: string): boolean {
-      if (sessionStore.verify(code, playerId, sessionSecret)) return false;
+    async function rejectUnauthorized(code: string, playerId: string, sessionSecret: string, errorEvent: string): Promise<boolean> {
+      if (await sessionStore.verify(code, playerId, sessionSecret)) return false;
       socket.emit(errorEvent, { message: 'Sessão inválida — entre na sala novamente' });
       return true;
     }
@@ -82,7 +82,7 @@ export function registerChampionshipModeHandlers(
         hostMigrationTracker.cancel(parsed.data.code);
       }
 
-      const sessionSecret = sessionStore.issue(parsed.data.code, parsed.data.playerId);
+      const sessionSecret = await sessionStore.issue(parsed.data.code, parsed.data.playerId);
       socket.emit('room:session', { sessionSecret });
 
       if (record.status === 'lobby') {
@@ -110,7 +110,7 @@ export function registerChampionshipModeHandlers(
         socket.emit('room:error', { message: 'Payload de saída inválido' });
         return;
       }
-      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
+      if (await rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
       try {
         const { record, hostMigratedTo } = await leaveRoom(joinRoomDeps, parsed.data);
@@ -134,7 +134,7 @@ export function registerChampionshipModeHandlers(
         socket.emit('room:error', { message: 'Configurações inválidas' });
         return;
       }
-      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
+      if (await rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
       try {
         const record = await updateRoomSettings(joinRoomDeps, parsed.data);
@@ -151,7 +151,7 @@ export function registerChampionshipModeHandlers(
         socket.emit('room:error', { message: 'Payload de início inválido' });
         return;
       }
-      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
+      if (await rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'room:error')) return;
 
       const record = await joinRoomDeps.roomRepository.findByCode(parsed.data.code);
       if (!record) {
@@ -211,13 +211,13 @@ export function registerChampionshipModeHandlers(
       });
     });
 
-    socket.on('guess:submit', (rawPayload: unknown) => {
+    socket.on('guess:submit', async (rawPayload: unknown) => {
       const parsed = guessPayloadSchema.safeParse(rawPayload);
       if (!parsed.success) {
         socket.emit('guess:error', { message: 'Palpite inválido' });
         return;
       }
-      if (rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'guess:error')) return;
+      if (await rejectUnauthorized(parsed.data.code, parsed.data.playerId, parsed.data.sessionSecret, 'guess:error')) return;
 
       const gameMode = registry.get(parsed.data.code);
       if (!gameMode) {

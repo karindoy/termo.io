@@ -43,7 +43,7 @@ async function leaveRoomLocked(deps: LeaveRoomDeps, input: LeaveRoomInput): Prom
     await deps.roomRepository.delete(input.code);
     const registry = record.mode === 'championship' ? deps.championshipRegistry : deps.raceRegistry;
     registry.remove(input.code);
-    deps.sessionStore.clear(input.code);
+    await deps.sessionStore.clear(input.code);
     return { code: input.code, record: null, hostMigratedTo: null, deleted: true };
   }
 

@@ -52,7 +52,7 @@ export function useRaceGame(code: string, playerId: string, nickname: string) {
       }
     }
 
-    const socket = createSocket('race');
+    const socket = createSocket('race', code);
     socketRef.current = socket;
 
     socket.on('connect', () => {

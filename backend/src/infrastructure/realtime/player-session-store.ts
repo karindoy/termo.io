@@ -4,10 +4,16 @@ import { randomUUID } from 'node:crypto';
 // browsing the lobby list) — it identifies a seat, not a credential. Privileged
 // actions (host controls, guesses, leaving) must instead prove possession of the
 // secret issued here at join time, which is never included in any room payload.
-export class PlayerSessionStore {
+export interface PlayerSessionStore {
+  issue(code: string, playerId: string): Promise<string>;
+  verify(code: string, playerId: string, secret: string | undefined): Promise<boolean>;
+  clear(code: string): Promise<void>;
+}
+
+export class InMemoryPlayerSessionStore implements PlayerSessionStore {
   private readonly secretsByRoom = new Map<string, Map<string, string>>();
 
-  issue(code: string, playerId: string): string {
+  async issue(code: string, playerId: string): Promise<string> {
     const secret = randomUUID();
     let roomSecrets = this.secretsByRoom.get(code);
     if (!roomSecrets) {
@@ -18,12 +24,12 @@ export class PlayerSessionStore {
     return secret;
   }
 
-  verify(code: string, playerId: string, secret: string | undefined): boolean {
+  async verify(code: string, playerId: string, secret: string | undefined): Promise<boolean> {
     if (!secret) return false;
     return this.secretsByRoom.get(code)?.get(playerId) === secret;
   }
 
-  clear(code: string): void {
+  async clear(code: string): Promise<void> {
     this.secretsByRoom.delete(code);
   }
 }

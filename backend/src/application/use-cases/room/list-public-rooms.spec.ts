@@ -33,6 +33,7 @@ function createDeps(): CreateRoomDeps {
     wordRepository: new FixedWordRepository(),
     championshipRegistry: new GameModeRegistry<ChampionshipMode>(),
     raceRegistry: new GameModeRegistry<RaceMode>(),
+    instanceTag: 'A',
   };
 }
 

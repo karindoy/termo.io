@@ -1,0 +1,48 @@
+services:
+  backend_a:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      PORT: 4000
+      CORS_ORIGIN: http://localhost:5173
+      INSTANCE_TAG: A
+    depends_on:
+      - redis
+
+  backend_b:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      PORT: 4000
+      CORS_ORIGIN: http://localhost:5173
+      INSTANCE_TAG: B
+    depends_on:
+      - redis
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "4000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend_a
+      - backend_b
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_SOCKET_URL: http://localhost:4000
+    ports:
+      - "5173:80"
+    depends_on:
+      - gateway
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
