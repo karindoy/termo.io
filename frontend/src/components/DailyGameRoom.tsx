@@ -17,7 +17,38 @@ const MODE_LABEL: Record<DailyGameMode, string> = {
   quarteto: 'Quarteto',
 };
 
-export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: () => void }) {
+const MODE_ORDER: DailyGameMode[] = ['termo', 'dueto', 'quarteto'];
+
+function DailyModeBar({ mode, onSelect }: { mode: DailyGameMode; onSelect: (mode: DailyGameMode) => void }) {
+  return (
+    <nav id="daily-mode-bar" className="mode-bar">
+      {MODE_ORDER.map((option) => (
+        <button
+          key={option}
+          type="button"
+          id={`daily-mode-bar-${option}`}
+          className={`mode-bar-tab${option === mode ? ' mode-bar-tab-active' : ''}`}
+          aria-current={option === mode}
+          onClick={() => {
+            if (option !== mode) onSelect(option);
+          }}
+        >
+          {MODE_LABEL[option].toLowerCase()}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+export function DailyGameRoom({
+  mode,
+  onBack,
+  onModeChange,
+}: {
+  mode: DailyGameMode;
+  onBack: () => void;
+  onModeChange: (mode: DailyGameMode) => void;
+}) {
   const { config, guesses, result, stats, loading, error, rejectedToken, submitGuess } = useDailyGame(mode);
   const { banner, show: showBanner } = useBanner();
 
@@ -32,7 +63,7 @@ export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: (
 
   function handleShare(): void {
     if (!result) return;
-    const text = buildDailyShareText(mode, result.boards, result.attemptsUsed, result.maxAttempts, result.won);
+    const text = buildDailyShareText(result.boards);
     navigator.clipboard
       .writeText(text)
       .then(() => showBanner('Resultado copiado!', 'success'))
@@ -72,9 +103,10 @@ export function DailyGameRoom({ mode, onBack }: { mode: DailyGameMode; onBack: (
   const fallbackBanner = error ? { message: error, type: 'error' as const } : null;
 
   return (
-    <div id="daily-game-room" className="app-shell">
+    <div id="daily-game-room" className="app-shell app-shell-with-mode-bar">
+      <DailyModeBar mode={mode} onSelect={onModeChange} />
+
       <header id="daily-game-header" className="app-header">
-        <h1>termo.io — {MODE_LABEL[mode]}</h1>
         <div id="daily-game-status-pill" className="status-pill">
           <span>
             Tentativas: {guesses.length}/{maxAttempts}

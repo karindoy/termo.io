@@ -23,7 +23,7 @@ async function waitForSettingsSync(page: import('@playwright/test').Page): Promi
   await page.waitForTimeout(1000);
 }
 
-test.describe.serial('termo.io — max players (50)', () => {
+test.describe.serial('max players (50)', () => {
   let players: TestPlayer[] = [];
 
   test.afterEach(async () => {

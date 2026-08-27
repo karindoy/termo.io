@@ -73,7 +73,7 @@ export function App() {
   }
 
   if (dailyMode) {
-    return <DailyGameRoom mode={dailyMode} onBack={() => setDailyMode(null)} />;
+    return <DailyGameRoom mode={dailyMode} onBack={() => setDailyMode(null)} onModeChange={setDailyMode} />;
   }
 
   if (!room) {
@@ -385,7 +385,6 @@ function ChampionshipGameRoom({
   return (
     <div id="championship-room" className="app-shell">
       <header id="championship-header" className="app-header">
-        <h1>termo.io — Campeonato</h1>
         <div id="championship-status-pill" className="status-pill">
           <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
@@ -577,7 +576,6 @@ function RaceGameRoom({
   return (
     <div id="race-room" className="app-shell">
       <header id="race-header" className="app-header">
-        <h1>termo.io — Corrida</h1>
         <div id="race-status-pill" className="status-pill">
           <span>Sala: {code}</span>
           <span>{connected ? '🟢 conectado' : '🔴 desconectado'}</span>

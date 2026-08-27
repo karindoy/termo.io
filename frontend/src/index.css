@@ -63,6 +63,47 @@ h2 {
   align-items: center
 }
 
+/* Daily mode bar: fixed top strip so mode switching stays reachable in one
+ * click even while the end-of-game stats modal (z-index 200) is open. */
+
+.app-shell-with-mode-bar {
+  padding-top: 40px;
+}
+
+.mode-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: #000;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 20px;
+  z-index: 250;
+}
+
+.mode-bar-tab {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: lowercase;
+  cursor: pointer;
+  padding: 8px 2px;
+}
+
+.mode-bar-tab:hover {
+  color: var(--color-text);
+}
+
+.mode-bar-tab-active {
+  color: #fff;
+}
+
 .app-main {
   max-width: 1100px;
   margin: 0 auto;
