@@ -21,7 +21,7 @@ export class InMemoryRoomRepository implements RoomRepository {
     this.rooms.delete(code);
   }
 
-  async clearPublicLobbies(): Promise<void> {}
+  async clearPublicLobbies(_instanceTag: string): Promise<void> {}
 
   async listPublicLobbies(): Promise<RoomRecord[]> {
     return Array.from(this.rooms.values())

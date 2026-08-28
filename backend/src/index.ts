@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   const hostMigrationTracker = new HostMigrationTracker();
   const sessionStore = new RedisPlayerSessionStore(redis);
 
-  await roomRepository.clearPublicLobbies();
+  await roomRepository.clearPublicLobbies(env.instanceTag);
 
   const roomDeps = { roomRepository, wordRepository, championshipRegistry, raceRegistry, sessionStore, instanceTag: env.instanceTag };
 
