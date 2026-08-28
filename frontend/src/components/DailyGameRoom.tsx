@@ -11,43 +11,12 @@ import type { DailyGameMode } from '../lib/types';
 
 const WORD_LENGTH = 5;
 
-const MODE_LABEL: Record<DailyGameMode, string> = {
-  termo: 'Termo',
-  dueto: 'Dueto',
-  quarteto: 'Quarteto',
-};
-
-const MODE_ORDER: DailyGameMode[] = ['termo', 'dueto', 'quarteto'];
-
-function DailyModeBar({ mode, onSelect }: { mode: DailyGameMode; onSelect: (mode: DailyGameMode) => void }) {
-  return (
-    <nav id="daily-mode-bar" className="mode-bar">
-      {MODE_ORDER.map((option) => (
-        <button
-          key={option}
-          type="button"
-          id={`daily-mode-bar-${option}`}
-          className={`mode-bar-tab${option === mode ? ' mode-bar-tab-active' : ''}`}
-          aria-current={option === mode}
-          onClick={() => {
-            if (option !== mode) onSelect(option);
-          }}
-        >
-          {MODE_LABEL[option].toLowerCase()}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 export function DailyGameRoom({
   mode,
   onBack,
-  onModeChange,
 }: {
   mode: DailyGameMode;
   onBack: () => void;
-  onModeChange: (mode: DailyGameMode) => void;
 }) {
   const { config, guesses, result, stats, loading, error, rejectedToken, submitGuess } = useDailyGame(mode);
   const { banner, show: showBanner } = useBanner();
@@ -104,8 +73,6 @@ export function DailyGameRoom({
 
   return (
     <div id="daily-game-room" className="app-shell app-shell-with-mode-bar">
-      <DailyModeBar mode={mode} onSelect={onModeChange} />
-
       <header id="daily-game-header" className="app-header">
         <div id="daily-game-status-pill" className="status-pill">
           <span>

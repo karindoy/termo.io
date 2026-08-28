@@ -14,6 +14,7 @@ import { CountdownDisplay } from './components/CountdownDisplay';
 import { Lobby } from './components/Lobby';
 import { PublicRoomBrowser } from './components/PublicRoomBrowser';
 import { DailyGameRoom } from './components/DailyGameRoom';
+import { DailyModeBar } from './components/DailyModeBar';
 import { getOrCreatePlayerId, getStoredNickname, storeNickname } from './lib/player-identity';
 import { clearStoredRoomCode, getStoredRoomCode, storeRoomCode } from './lib/active-room-storage';
 import { createRoom, getRoom, RoomLookupError } from './lib/api';
@@ -59,38 +60,37 @@ export function App() {
     setRoom(null);
   }
 
+  function handleHome(): void {
+    clearStoredRoomCode();
+    setRoom(null);
+    setDailyMode(null);
+  }
+
   if (!nickname) {
     return <NicknameForm onSubmit={(value) => { storeNickname(value); setNickname(value); }} />;
   }
 
-  if (restoring) {
-    return (
-      <div id="restoring-session" className="centered-shell">
-        <h1>termo.io</h1>
-        <p>Reconectando…</p>
-      </div>
-    );
-  }
-
-  if (dailyMode) {
-    return <DailyGameRoom mode={dailyMode} onBack={() => setDailyMode(null)} onModeChange={setDailyMode} />;
-  }
-
-  if (!room) {
-    return <RoomChoiceScreen nickname={nickname} onRoomReady={handleRoomReady} onSelectDaily={setDailyMode} />;
-  }
-
-  if (room.status === 'lobby') {
-    return (
-      <Lobby room={room} playerId={playerId} nickname={nickname} onGameStart={handleRoomReady} onBack={handleBack} />
-    );
-  }
-
-  if (room.mode === 'championship') {
-    return <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={handleBack} />;
-  }
-
-  return <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={handleBack} />;
+  return (
+    <>
+      <DailyModeBar mode={dailyMode} onSelect={setDailyMode} onHome={handleHome} />
+      {restoring ? (
+        <div id="restoring-session" className="centered-shell app-shell-with-mode-bar">
+          <h1>termo.io</h1>
+          <p>Reconectando…</p>
+        </div>
+      ) : dailyMode ? (
+        <DailyGameRoom mode={dailyMode} onBack={() => setDailyMode(null)} />
+      ) : !room ? (
+        <RoomChoiceScreen nickname={nickname} onRoomReady={handleRoomReady} />
+      ) : room.status === 'lobby' ? (
+        <Lobby room={room} playerId={playerId} nickname={nickname} onGameStart={handleRoomReady} onBack={handleBack} />
+      ) : room.mode === 'championship' ? (
+        <ChampionshipGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={handleBack} />
+      ) : (
+        <RaceGameRoom code={room.code} playerId={playerId} nickname={nickname} isHost={room.hostId === playerId} onBack={handleBack} />
+      )}
+    </>
+  );
 }
 
 function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
@@ -115,20 +115,12 @@ function NicknameForm({ onSubmit }: { onSubmit: (nickname: string) => void }) {
   );
 }
 
-const DAILY_GAME_OPTIONS: { mode: DailyGameMode; label: string; description: string }[] = [
-  { mode: 'termo', label: 'Termo', description: '1 palavra · 6 tentativas' },
-  { mode: 'dueto', label: 'Dueto', description: '2 palavras · 7 tentativas' },
-  { mode: 'quarteto', label: 'Quarteto', description: '4 palavras · 9 tentativas' },
-];
-
 function RoomChoiceScreen({
   nickname,
   onRoomReady,
-  onSelectDaily,
 }: {
   nickname: string;
   onRoomReady: (room: RoomRecord) => void;
-  onSelectDaily: (mode: DailyGameMode) => void;
 }) {
   const [mode, setMode] = useState<RoomMode>('championship');
   const [isPublic, setIsPublic] = useState(true);
@@ -164,63 +156,44 @@ function RoomChoiceScreen({
   }
 
   return (
-    <div id="room-choice-screen" className="centered-shell" style={{ maxWidth: 760 }}>
+    <div id="room-choice-screen" className="centered-shell app-shell-with-mode-bar" style={{ maxWidth: 480 }}>
       <h1>termo.io</h1>
 
-      <div id="room-choice-columns">
-        <div id="multiplayer-section">
-          <h2 className="section-heading">Multiplayer</h2>
+      <div id="multiplayer-section">
+        <h2 className="section-heading">Multiplayer</h2>
 
-          <section id="create-room-section" className="card">
-            <h2>Criar uma sala</h2>
-            <select className="input" value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
-              <option value="championship">Campeonato</option>
-              <option value="race">Corrida</option>
-            </select>
-            <label className="checkbox-field">
-              <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
-              Sala pública (aparece na lista de salas)
-            </label>
-            <button className="btn btn-primary" disabled={loading} onClick={handleCreate}>
-              Criar sala
-            </button>
-          </section>
+        <section id="create-room-section" className="card">
+          <h2>Criar uma sala</h2>
+          <select className="input" value={mode} onChange={(event) => setMode(event.target.value as RoomMode)}>
+            <option value="championship">Campeonato</option>
+            <option value="race">Corrida</option>
+          </select>
+          <label className="checkbox-field">
+            <input type="checkbox" checked={isPublic} onChange={(event) => setIsPublic(event.target.checked)} />
+            Sala pública (aparece na lista de salas)
+          </label>
+          <button className="btn btn-primary" disabled={loading} onClick={handleCreate}>
+            Criar sala
+          </button>
+        </section>
 
-          <section id="join-room-section" className="card">
-            <h2>Entrar com código</h2>
-            <input
-              className="input"
-              value={joinCode}
-              onChange={(event) => setJoinCode(event.target.value)}
-              placeholder="Código da sala"
-              maxLength={8}
-            />
-            <button className="btn" disabled={loading} onClick={() => handleJoinByCode(joinCode)}>
-              Entrar
-            </button>
-          </section>
+        <section id="join-room-section" className="card">
+          <h2>Entrar com código</h2>
+          <input
+            className="input"
+            value={joinCode}
+            onChange={(event) => setJoinCode(event.target.value)}
+            placeholder="Código da sala"
+            maxLength={8}
+          />
+          <button className="btn" disabled={loading} onClick={() => handleJoinByCode(joinCode)}>
+            Entrar
+          </button>
+        </section>
 
-          <PublicRoomBrowser onJoin={(code) => handleJoinByCode(code)} />
+        <PublicRoomBrowser onJoin={(code) => handleJoinByCode(code)} />
 
-          {error && <p className="banner banner-error">{error}</p>}
-        </div>
-
-        <div id="singleplayer-section">
-          <h2 className="section-heading">Jogos diários (solo)</h2>
-          <section id="daily-games-section" className="card">
-            {DAILY_GAME_OPTIONS.map((option) => (
-              <button
-                key={option.mode}
-                id={`daily-game-${option.mode}`}
-                className="btn daily-game-option"
-                onClick={() => onSelectDaily(option.mode)}
-              >
-                <span className="daily-game-option-label">{option.label}</span>
-                <span className="daily-game-option-description">{option.description}</span>
-              </button>
-            ))}
-          </section>
-        </div>
+        {error && <p className="banner banner-error">{error}</p>}
       </div>
     </div>
   );
@@ -383,7 +356,7 @@ function ChampionshipGameRoom({
   );
 
   return (
-    <div id="championship-room" className="app-shell">
+    <div id="championship-room" className="app-shell app-shell-with-mode-bar">
       <header id="championship-header" className="app-header">
         <div id="championship-status-pill" className="status-pill">
           <span>Sala: {code}</span>
@@ -574,7 +547,7 @@ function RaceGameRoom({
   }, [myAttempts.length]);
 
   return (
-    <div id="race-room" className="app-shell">
+    <div id="race-room" className="app-shell app-shell-with-mode-bar">
       <header id="race-header" className="app-header">
         <div id="race-status-pill" className="status-pill">
           <span>Sala: {code}</span>

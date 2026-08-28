@@ -46,7 +46,7 @@ export function Lobby({
   }
 
   return (
-    <div id="lobby-shell" className="centered-shell" style={{ maxWidth: 480 }}>
+    <div id="lobby-shell" className="centered-shell app-shell-with-mode-bar" style={{ maxWidth: 480 }}>
       <header className="app-header" style={{ borderRadius: 8, border: '1px solid var(--color-border)' }}>
         <h1>Sala {room.code}</h1>
         <span className="status-pill">{connected ? '🟢 conectado' : '🔴 desconectado'}</span>
