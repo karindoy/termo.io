@@ -79,7 +79,7 @@ export function App() {
           <p>Reconectando…</p>
         </div>
       ) : dailyMode ? (
-        <DailyGameRoom mode={dailyMode} onBack={() => setDailyMode(null)} />
+        <DailyGameRoom key={dailyMode} mode={dailyMode} onBack={() => setDailyMode(null)} />
       ) : !room ? (
         <RoomChoiceScreen nickname={nickname} onRoomReady={handleRoomReady} />
       ) : room.status === 'lobby' ? (
