@@ -13,6 +13,15 @@ const STATUS_COLOR: Record<LetterStatus, string> = {
   absent: '#334155',
 };
 
+/** Next empty cell after `cursor`, scanning left to right and wrapping around the row. */
+function findNextEmptyIndex(letters: string[], wordLength: number, cursor: number): number | null {
+  for (let step = 1; step <= wordLength; step++) {
+    const index = (cursor + step) % wordLength;
+    if (!letters[index]) return index;
+  }
+  return null;
+}
+
 // Only `feedback` is ever read below — this lets daily-game boards (which have no
 // playerId/nickname/createdAt, just a guess + its feedback) reuse the same grid.
 export type WordGridAttempt = Pick<Attempt, 'feedback'>;
@@ -84,6 +93,11 @@ export function WordGrid({
 
   const showStats = correctWords !== undefined && wrongWords !== undefined;
 
+  const nextEmptyCursor =
+    activeGuess !== undefined && activeCursor !== undefined
+      ? findNextEmptyIndex(activeGuess, wordLength, activeCursor)
+      : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {showStats && (
@@ -113,6 +127,7 @@ export function WordGrid({
                   letter={letter}
                   isTyping={activeLastEdited === columnIndex}
                   isCursor={activeCursor === columnIndex}
+                  isNextCursor={nextEmptyCursor === columnIndex}
                   onClick={onActiveCellClick ? () => onActiveCellClick(columnIndex) : undefined}
                 />
               );
@@ -144,6 +159,7 @@ function Tile({
   isFlipping,
   isTyping,
   isCursor,
+  isNextCursor,
   delay,
   onClick,
 }: {
@@ -153,6 +169,7 @@ function Tile({
   isFlipping?: boolean;
   isTyping?: boolean;
   isCursor?: boolean;
+  isNextCursor?: boolean;
   delay?: number;
   onClick?: () => void;
 }) {
@@ -162,6 +179,7 @@ function Tile({
   if (isFlipping) classNames.push('tile-flip');
   if (isTyping) classNames.push('tile-pop');
   if (isCursor) classNames.push('tile-cursor');
+  else if (isNextCursor) classNames.push('tile-cursor-next');
   if (onClick) classNames.push('tile-clickable');
 
   return (

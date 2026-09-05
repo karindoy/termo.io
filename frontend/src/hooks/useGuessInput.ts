@@ -28,6 +28,16 @@ function clampIndex(index: number, wordLength: number): number {
   return Math.max(0, Math.min(index, wordLength - 1));
 }
 
+/** Next empty cell after `from`, scanning left to right and wrapping around the row.
+ * Falls back to `from + 1`, wrapped around the row, once every cell is filled. */
+function nextCursorAfterType(letters: string[], wordLength: number, from: number): number {
+  for (let step = 1; step <= wordLength; step++) {
+    const index = (from + step) % wordLength;
+    if (!letters[index]) return index;
+  }
+  return (from + 1) % wordLength;
+}
+
 /** Cursor-addressable fixed-length guess buffer: arrow keys / cell clicks reposition the
  * cursor, so a letter can be typed/edited at any position, not just appended at the end.
  * `resetKey` should change whenever the word to guess changes (e.g. round sequence /
@@ -48,7 +58,7 @@ export function useGuessInput(wordLength: number, enabled: boolean, resetKey?: u
     setState((prev) => {
       const letters = [...prev.letters];
       letters[prev.cursor] = letter;
-      return { letters, cursor: clampIndex(prev.cursor + 1, wordLength), lastEdited: prev.cursor };
+      return { letters, cursor: nextCursorAfterType(letters, wordLength, prev.cursor), lastEdited: prev.cursor };
     });
   }
 

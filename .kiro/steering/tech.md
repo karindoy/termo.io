@@ -16,26 +16,26 @@ Monorepo split into three top-level responsibilities — **backend**, **frontend
 backend/
 ├── src/
 │   ├── domain/
-│   │   ├── entities/          # Room, Player, Game, Word, Attempt, Score, DailyPuzzle (planned)
-│   │   ├── value-objects/     # GuessFeedback, NormalizedLetter, RoomCode, RoomSettings, PlayerIdentity, PuzzleDate (planned)
+│   │   ├── entities/          # Room, Player, Game, Word, Attempt, Score, DailyPuzzle
+│   │   ├── value-objects/     # GuessFeedback, NormalizedLetter, RoomCode, RoomSettings, PlayerIdentity, PuzzleDate
 │   │   ├── repositories/      # RoomRepository, WordRepository (interfaces only)
 │   │   └── errors/            # RoomFullError, RoomNotFoundError, InvalidGuessError, AttemptsExceededError
 │   ├── application/
 │   │   ├── use-cases/
 │   │   │   ├── room/          # create-room, join-room, leave-room, list-public-rooms, migrate-host
 │   │   │   ├── game/          # start-game, submit-guess, advance-to-next-word, end-game, resolve-tie-break
-│   │   │   └── daily/          # (planned) resolve-daily-puzzle, submit-daily-guess — shared by Termo/Dueto/Quarteto
+│   │   │   └── daily/          # submit-daily-guess — shared by Termo/Dueto/Quarteto
 │   │   └── game-modes/        # GameMode interface + ChampionshipMode, RaceMode implementations
-│   │       └── daily-modes/    # (planned) TermoMode, DuetoMode, QuartetoMode — differ only in wordCount/maxAttempts
+│   │       └── daily-modes/    # daily-mode-config.ts — one config, not separate per-mode classes: {wordCount,maxAttempts} for Termo/Dueto/Quarteto
 │   ├── infrastructure/
 │   │   ├── persistence/
 │   │   │   ├── redis/         # RoomRepository impl, live game/attempt state, TTL cleanup
-│   │   │   └── words/         # WordRepository impl (BR-PT dictionary file), DailyWordResolver (planned, see below)
+│   │   │   └── words/         # WordRepository impl (BR-PT dictionary file), DailyWordResolver
 │   │   ├── realtime/          # Socket.io server setup, event adapters
 │   │   └── config/            # env loading, DI/composition root
 │   ├── presentation/
 │   │   ├── http/
-│   │   │   ├── routes/        # public-rooms list, health, daily/:mode (planned, e.g. /daily/termo)
+│   │   │   ├── routes/        # public-rooms list, health, daily/:mode (e.g. /daily/termo/config, /daily/termo/guess)
 │   │   │   ├── controllers/
 │   │   │   └── middlewares/   # error-handler, validation (zod), rate-limit
 │   │   └── sockets/
@@ -51,8 +51,8 @@ backend/
 frontend/
 ├── src/
 │   ├── components/            # WordGrid, Keyboard, Lobby, PlayerBoard, PlacarModal
-│   ├── hooks/                 # useSocket, useRoom, useGame, useDailyGame (planned)
-│   ├── pages/                 # Home, CreateRoom, JoinRoom, GameRoom, Termo, Dueto, Quarteto (planned)
+│   ├── hooks/                 # useSocket, useRoom, useGame, useDailyGame
+│   ├── pages/                 # actual routing is screen-state in App.tsx, not a router/pages dir — see "Entry navigation" below
 │   └── lib/                   # socket client setup, api client
 ├── Dockerfile
 ├── package.json
@@ -94,37 +94,35 @@ Root: `package.json` (npm workspaces: `backend`, `frontend`), `CODING_STANDARDS.
 - **Timeout also honors partial solves**: if the per-word timer (`scheduleTimeout`) fires before everyone finishes, it no longer hardcodes `winnerId: null` — it calls `bestSolver()` first and awards the word to whoever had solved it (fewest attempts) by that point, falling back to `reason: 'timeout', winnerId: null` only if nobody had solved it at all.
 - **Frontend gating is per-player, not per-round**: `ChampionshipGameRoom` in `App.tsx` no longer gates the whole active row on `solvedBy` (that field only ever reflects the *entire game* concluding — see `submit-guess.ts`'s `solved: gameMode.isResolved()` — it was already not a reliable "this round just ended" signal). Instead `hasSolvedCurrentWord` is derived straight from `myAttempts` (`attempt.feedback.every(letter => letter.status === 'correct')`) and combined with the existing attempts-exhausted check into `hasFinishedWord`, which now gates `canGuess` for that player alone. Other players keep guessing normally until the round actually resolves (`round:started`/`tiebreak:started`), exactly as before.
 
-## Singleplayer Daily Games (planned: Termo, Dueto, Quarteto)
+## Singleplayer Daily Games (shipped: Termo, Dueto, Quarteto)
 
 No `Room`/`Player`/socket session involved — these are solo, stateless-per-request puzzles served over plain HTTP, sharing only the `WordRepository`/wordlist infrastructure with multiplayer.
 
-- **Config differs only by word count and attempt budget**: the three games are the same mechanic parameterized differently — implement as one `DailyMode` (or `TermoMode`/`DuetoMode`/`QuartetoMode` per the `GameMode` strategy pattern) taking `{ wordCount, maxAttempts }`:
+- **Config differs only by word count and attempt budget**: the three games are the same mechanic parameterized by one `daily-mode-config.ts` (`application/game-modes/daily-modes/`) — no separate `TermoMode`/`DuetoMode`/`QuartetoMode` classes — taking `{ wordCount, maxAttempts }`:
   | Mode | `wordCount` | `maxAttempts` |
   |---|---|---|
   | Termo | 1 | 6 |
   | Dueto | 2 | 7 |
   | Quarteto | 4 | 9 |
-- **Date-seeded word selection algorithm**: for a given calendar date `D` (ISO `YYYY-MM-DD`, resolved in a fixed timezone — e.g. `America/Sao_Paulo` — so the puzzle rolls over at the same instant for every player regardless of their local timezone) and mode `M`, `DailyWordResolver` (planned, `infrastructure/persistence/words/`) computes:
-  1. A base seed: a stable integer hash of `` `${D}:${M}` `` (e.g. a small non-cryptographic hash like FNV-1a — determinism matters, not unpredictability/security, since the whole point is every player *can* eventually see the same answer).
-  2. A first index: `seed % wordlist.length`.
-  3. For `wordCount > 1`, subsequent indices via a deterministic probe (e.g. linear congruential step or `hash(seed, i) % wordlist.length`), **skipping any index already chosen for this puzzle** so a single Dueto/Quarteto puzzle never repeats the same word on two boards.
+- **Date-seeded word selection algorithm**: for a given calendar date `D` (ISO `YYYY-MM-DD`, resolved in the fixed timezone `America/Sao_Paulo` via `Intl.DateTimeFormat` — so the puzzle rolls over at the same instant for every player regardless of their local timezone) and mode `M`, `DailyWordResolver` (`infrastructure/persistence/words/daily-word-resolver.ts`) computes:
+  1. A base seed: an FNV-1a hash of `` `${D}:${M}` `` (determinism matters, not unpredictability/security, since the whole point is every player *can* eventually see the same answer).
+  2. A first index: `fnv1aHash(baseSeed) % wordlist.size`.
+  3. For `wordCount > 1`, subsequent indices via `fnv1aHash(`${baseSeed}:${step}`) % wordlist.size`, **skipping any index already chosen for this puzzle** so a single Dueto/Quarteto puzzle never repeats the same word on two boards.
   - This requires **no persistence** — any server instance, at any time, recomputes the identical word(s) for date `D` + mode `M` from the algorithm alone. No "today's word" row to write or cache-invalidate.
-- **Shared attempt pool, per-board feedback**: unlike Championship (one word, one attempt counter per word), Dueto/Quarteto have `wordCount` secret words open simultaneously against a single shared attempt counter. Each submitted guess is checked against **every still-unsolved board** in the same call, producing one `GuessFeedback` per board, and increments the shared counter exactly once regardless of `wordCount`. The puzzle ends when every board is solved or the shared counter reaches `maxAttempts`, whichever first.
-- **Server-side resolution still mandatory**: even with no room/session, guess feedback and win/loss determination happen server-side only — same principle as multiplayer (see Word resolution authority above). A `POST /daily/:mode/guess`-style endpoint (planned) validates the guess against the date-derived word(s) and returns only feedback, never the secret word(s) before they're solved or attempts are exhausted.
-- **No live/realtime concern**: since there's no other player to broadcast to, this does not need Socket.io — plain Fastify HTTP routes under `presentation/http/routes/daily/` suffice. Client-side result/streak history (if any) is `localStorage`-only for now; the backend does not persist per-player daily results.
+- **Shared attempt pool, per-board feedback, fully stateless server**: unlike Championship (one word, one attempt counter per word), Dueto/Quarteto have `wordCount` secret words open simultaneously against a single shared attempt counter. The backend holds **no server-side per-player puzzle state at all** — `domain/entities/daily-puzzle.ts`'s `DailyPuzzle.replay()` recomputes every board's feedback from scratch on each request, given the client-resent, ordered `guesses[]` history; each guess counts once against the shared counter regardless of `wordCount`. The puzzle ends when every board is solved or the shared counter reaches `maxAttempts`, whichever first.
+- **Server-side resolution still mandatory**: even with no room/session, guess feedback and win/loss determination happen server-side only — same principle as multiplayer (see Word resolution authority above). `POST /daily/:mode/guess` (`presentation/http/routes/daily.ts`, rate-limited 60/min) validates the guess against the date-derived word(s) and returns only feedback, never the secret word(s) before they're solved or attempts are exhausted. A separate `GET /daily/:mode/config` returns only `{wordCount, maxAttempts}` — there is no puzzle-fetch route, since the stateless-replay design leaves no puzzle payload to fetch.
+- **No live/realtime concern**: since there's no other player to broadcast to, this doesn't use Socket.io — plain Fastify HTTP routes in `presentation/http/routes/daily.ts` suffice. Client-side result/streak history (`lib/daily-progress-storage.ts`, `lib/daily-stats-storage.ts`) is `localStorage`-only; the backend does not persist per-player daily results.
 
-### Entry screen split: Multiplayer vs Singleplayer (planned)
+### Entry navigation: Multiplayer vs Singleplayer (shipped)
 
-**Goal**: the app's entry screen — today `RoomChoiceScreen` (`frontend/src/App.tsx`, rendered as `#room-choice-screen` whenever there's a `nickname` but no `room`) — only offers the multiplayer create/join flow. Split it into two clearly separated sections so a player can go straight into a daily singleplayer game without touching room creation at all: an `#multiplayer-section` div (today's flow, unchanged) and a new `#singleplayer-section` div (entry cards for Termo, Dueto, Quarteto).
+Daily games are **not** reached via entry cards on `RoomChoiceScreen` — an earlier version built that ("`#singleplayer-section`" cards) but it was replaced by a persistent global navbar. `components/DailyModeBar.tsx` is mounted once in `App.tsx` and rendered on every screen once a `nickname` exists (nickname form excepted), with tabs for Termo/Dueto/Quarteto and a 🏠 home button that clears both `room` and `dailyMode` state. `App()`'s branching is: no `nickname` → `NicknameForm`; else always render `DailyModeBar`, then branch on `restoring` (session-restore spinner) → `dailyMode` set → `<DailyGameRoom key={dailyMode}>` → no `room` → `RoomChoiceScreen` → `room.status === 'lobby'` → `Lobby` → else the matching multiplayer game room. The `key={dailyMode}` on `DailyGameRoom` force-remounts it on mode switch so no stale per-mode state (guesses, stats modal) leaks across.
 
-Tasks:
+The backend/frontend pieces below are all implemented, not planned:
 
-1. **Frontend layout**: in `RoomChoiceScreen`, wrap the existing `#create-room-section`, `#join-room-section`, and `<PublicRoomBrowser>` in one new `#multiplayer-section` div (no behavior change). Add a sibling `#singleplayer-section` div with one card/button per daily game (Termo, Dueto, Quarteto) — these don't need room creation, just navigation.
-2. **App-level navigation for daily games**: `App()` (`App.tsx`) currently branches on `room` state alone (`!room` → `RoomChoiceScreen`, `room.status === 'lobby'` → `Lobby`, else the matching game room). Add a sibling `dailyMode: DailyGameMode | null` state, set when a singleplayer card is clicked and cleared on back — same shape as the existing `room`/`handleBack` pair — and render a new `DailyGameRoom` in that branch instead of the room flow. No `RoomRecord`, `playerId`-as-room-seat, or socket state is involved.
-3. **Backend routes/use-cases**: implement the pieces already specified above under "Singleplayer Daily Games" — `DailyWordResolver` (`infrastructure/persistence/words/`), the `TermoMode`/`DuetoMode`/`QuartetoMode` strategies (`application/game-modes/daily-modes/`), `application/use-cases/daily/` (`resolve-daily-puzzle`, `submit-daily-guess`), and `GET /daily/:mode` + `POST /daily/:mode/guess` routes (`presentation/http/routes/daily/`).
-4. **Frontend data layer**: `lib/api.ts` gets `getDailyPuzzle(mode)` / `submitDailyGuess(mode, guess)`; a new `hooks/useDailyGame.ts` (planned) owns the per-board feedback array, the shared attempt counter, and win/loss state, calling those two endpoints only — no `useSocket`.
-5. **Frontend game screen**: `DailyGameRoom` (or three thin per-mode pages `Termo`/`Dueto`/`Quarteto` that all render it with a different `mode` prop) reuses `WordGrid`/`Keyboard`/`Tile`. For Dueto/Quarteto, render `wordCount` `WordGrid`s side by side, all fed by one shared `Keyboard`/`useGuessInput` buffer and one shared attempt counter — the "own grid, no fixed `totalRows`" pattern used for the multiplayer own-board applies to every board here too, since it's still the same single player.
-6. **Local progress persistence**: `lib/daily-progress-storage.ts` (planned) keyed by `mode` + date, storing the player's attempts/result in `localStorage` — matches the product decision that daily-game history is client-local only, no per-player server-side record.
+1. **Backend**: `DailyWordResolver` (`infrastructure/persistence/words/daily-word-resolver.ts`, FNV-1a-seeded deterministic index selection), `daily-mode-config.ts` (`application/game-modes/daily-modes/`) parameterizing `{wordCount, maxAttempts}` per mode, `application/use-cases/daily/submit-daily-guess.ts`, and routes in `presentation/http/routes/daily.ts`: **`GET /daily/:mode/config`** (returns `{wordCount, maxAttempts}` only) and **`POST /daily/:mode/guess`** (rate-limited 60/min, takes the full ordered `guesses[]` array). There is no `GET /daily/:mode` puzzle-fetch route — the backend is fully stateless (`domain/entities/daily-puzzle.ts`'s `DailyPuzzle.replay()` recomputes every board's feedback from the resent guess history on every call), so there's no puzzle payload to fetch beyond the static config.
+2. **Frontend data layer**: `lib/api.ts` has `getDailyConfig(mode)` / `submitDailyGuess(mode, guesses)`; `hooks/useDailyGame.ts` owns the per-board feedback array, shared attempt counter, and win/loss state, replaying stored guesses against the server on mount for refresh-resilience. No `useSocket` involved — plain HTTP only.
+3. **Frontend game screen**: `components/DailyGameRoom.tsx` reuses `WordGrid`/`Keyboard`. For Dueto/Quarteto it renders `wordCount` `WordGrid`s side by side, all fed by one shared `Keyboard`/`useGuessInput` buffer and one shared attempt counter — the same "own grid, no fixed `totalRows`" pattern used for the multiplayer own-board.
+4. **Local progress/stats persistence**: `lib/daily-progress-storage.ts` (guesses keyed by `mode:date`) and `lib/daily-stats-storage.ts` (games/wins/streaks/attempt distribution), both `localStorage`-only — matches the product decision that daily-game history is client-local only, no per-player server-side record. `components/DailyStatsModal.tsx` surfaces this plus a share button (`lib/daily-share-text.ts`) and a next-puzzle countdown (`hooks/useNextPuzzleCountdown.ts`).
 
 ## Word Dictionary & Matching Rules
 
@@ -134,7 +132,7 @@ Tasks:
 
 ## Session Identity & Anti-Abuse
 
-- **Player identity**: `playerId` is a client-supplied string (1–64 chars), not a cookie — there is no server-issued long-lived identity. Authority instead comes from a **session secret**: on `room:join`, `PlayerSessionStore.issue(code, playerId)` (`infrastructure/realtime/player-session-store.ts`) mints a per-room, per-player UUID, sent back once via `room:session`. Every privileged action after that (leave, settings, start, guess) must present that same secret; `sessionStore.verify(code, playerId, secret)` rejects the call otherwise. The secret is never included in any broadcast payload — `playerId`/nickname are public (visible to the whole room, and to public-lobby browsers), the secret is the only thing that proves control of a seat. Sessions live in-memory only (`Map`, not Redis) and are cleared when the room is deleted. A page refresh always loses the in-memory secret — a fresh one is reissued on the next `room:join`, see reconnect-on-refresh below.
+- **Player identity**: `playerId` is a client-supplied string (1–64 chars), not a cookie — there is no server-issued long-lived identity. Authority instead comes from a **session secret**: on `room:join`, `PlayerSessionStore.issue(code, playerId)` (`infrastructure/realtime/player-session-store.ts`) mints a per-room, per-player UUID, sent back once via `room:session`. Every privileged action after that (leave, settings, start, restart, guess) must present that same secret; `sessionStore.verify(code, playerId, secret)` rejects the call otherwise. The secret is never included in any broadcast payload — `playerId`/nickname are public (visible to the whole room, and to public-lobby browsers), the secret is the only thing that proves control of a seat. **Production sessions live in Redis** (`RedisPlayerSessionStore`, `infrastructure/realtime/redis-player-session-store.ts`, key `session:<code>`, 6h TTL mirroring room TTL — required since sessions must be readable by whichever backend instance a request lands on, see "Multi-instance deployment" below); an `InMemoryPlayerSessionStore` also exists but is only used in tests. A page refresh always loses the client-held secret — a fresh one is reissued on the next `room:join`, see reconnect-on-refresh below.
 - **Reconnect-on-refresh, seat kept only while the game is running**: `join-room.ts`'s `alreadyJoined` branch (a `playerId` already present in `record.players`) bypasses the lobby/full-room checks unconditionally, so re-emitting `room:join` with the same `playerId` after a refresh transparently resumes an existing seat mid-game — no special "resume" protocol needed, it's the same join path, just re-issuing a new session secret and replaying the current `room:state`/`round` snapshot. The frontend leans on this: `frontend/src/lib/active-room-storage.ts` persists the active room `code` to `sessionStorage` (per-tab, survives reload, cleared on tab close) whenever a room is (re)entered; on mount, `App.tsx` calls `GET /rooms/:code` and only restores straight into the game screen (skipping the choice/lobby screens) when `record.status === 'in-progress'` **and** the stored `playerId` is still in `record.players` — otherwise it clears the stored code and falls through to the normal join flow. This deliberately excludes the lobby: a lobby-status disconnect already runs a full `leaveRoom()` synchronously (see Zombie players below), so there is no seat left to restore by the time a lobby refresh's `getRoom` call resolves.
 - **Seat killed on game end**: when `game:finished`/`race:finished` fires, the socket handlers' `bindBroadcast` now calls `markRoomFinished` (`application/use-cases/room/mark-room-finished.ts`) to set `record.status = 'finished'` (a `RoomStatus` value that exists on the type but was previously never written), in addition to the existing `registry.remove(code)`. This is what makes the reconnect check above refuse to restore a seat once the game is over — the room record itself is deliberately *not* deleted and `players` is left untouched, since `restart-room.ts` still needs both to rebuild the next game for the same roster; `restartRoom` sets `status` back to `'in-progress'` when the host restarts.
 - **No auto-reconnect-to-slot in the lobby**: rejoining a room in `lobby` status does not implicitly take over a previous seat — the client must still hold the original session secret to act as that player again, and (per above) the seat is typically already gone by the time a lobby refresh completes. Losing the secret (e.g. clearing session storage) outside of a refresh means losing control of that seat, though the seat itself isn't freed until the room/player-room TTL lapses or the room empties.
@@ -143,8 +141,8 @@ Tasks:
 - **Zombie rooms**: a Redis room record can outlive its in-memory `GameModeRegistry` entry (e.g. after a server restart, since the registry is process-local and Redis persists). This is only detected lazily, on the next join attempt: if the registry entry is missing and the room is still `lobby`, the stale record is deleted and the join fails with `RoomNotFoundError`; if the room was mid-game, the record is left in place for its TTL to expire — there is no background sweep.
 - **Room/session TTL**: room records and `player-room:<playerId>` mappings are both written with a flat **6-hour TTL** (`EX`) at creation; subsequent saves use `KEEPTTL`, so the TTL is never refreshed by activity — a room is hard-capped at 6 h of life regardless of how active it stays.
 - **Host migration — two paths, not one**: a **voluntary** `room:leave` by the host reassigns the host **immediately** (no grace period) to `players[0]` after removal. An **involuntary** disconnect while a game is in progress instead starts a **30 s grace timer** (`HostMigrationTracker`, `infrastructure/realtime/host-migration-tracker.ts`); if the host reconnects in time the timer is cancelled, otherwise `migrateHost()` picks the first remaining player in the room's `players` array (join order, but can drift after players leave/rejoin — not an explicit succession list) and broadcasts `host:migrated`.
-- **Rate limiting**: global Fastify limit of 100 req/min/IP; `POST /rooms` (create) capped at 10/min/IP; `GET /rooms/:code` (lookup by code) capped at 20/min/IP. There is **no** per-`playerId`-per-IP limit on socket joins.
-- **Private room codes**: 8 chars from a 31-symbol CSPRNG alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (excludes `0`, `1`, `I`, `L`, `O`); generation retries up to 5× on collision; codes stop resolving once the room record is deleted (explicit empty-room delete, zombie-room delete on stale join, or TTL expiry).
+- **Rate limiting**: `@fastify/rate-limit`, configured inline per-route (in `backend/src/index.ts` and the route files themselves) rather than a dedicated `middlewares/rate-limit.ts` — the `presentation/http/middlewares/` directory in the structure diagram above doesn't actually exist as such. Global limit 100 req/min/IP; `POST /rooms` (create) capped at 10/min/IP; `GET /rooms/:code` (lookup by code) capped at 20/min/IP; `POST /daily/:mode/guess` capped at 60/min/IP. `@fastify/helmet` is also registered globally for standard security headers. There is **no** per-`playerId`-per-IP limit on socket joins.
+- **Private room codes**: 8 chars from a 31-symbol CSPRNG alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (excludes `0`, `1`, `I`, `L`, `O`) — but the **first character is forced to the owning backend instance's `INSTANCE_TAG`** for sticky routing (see "Multi-instance deployment" below), so only 7 characters are actually random. Generation retries up to 5× on collision; codes stop resolving once the room record is deleted (explicit empty-room delete, zombie-room delete on stale join, or TTL expiry).
 
 ## Frontend
 
@@ -195,17 +193,22 @@ Layered/Clean Architecture — `domain` → `application` → `infrastructure` �
 
 ## Containerization
 
-- **Per-package `Dockerfile`**: `backend/Dockerfile` and `frontend/Dockerfile` live next to their code. Neither reaches outside its own directory.
+- **Per-package `Dockerfile`**: `backend/Dockerfile` and `frontend/Dockerfile` live next to their code, but build with the **repo root** as build context (needed for npm-workspace resolution: `npm ci --workspace=<pkg> --include-workspace-root`).
 - **Multi-stage builds**: `deps` → `build` → `runtime`. Final image contains only compiled output and production `node_modules`.
-- **Base image**: pinned `node:<lts>-alpine` (never `latest`); frontend runtime uses pinned `nginx:<version>-alpine`.
-- **Reproducible installs**: `npm ci` from committed lockfile.
 - **Non-root user**: runtime containers run as `USER node`.
-- **Small surface area**: `.dockerignore` excludes `node_modules`, `.git`, `dist`, `.env*`, test files.
-- **Signal handling**: `NODE_ENV=production` set explicitly; Node receives signals directly (no shell-form `CMD`) for graceful shutdown.
-- **Healthcheck**: backend hits `/health`; frontend Nginx serves a static healthcheck endpoint.
-- **No secrets in images**: all config via env vars injected at runtime from `infra/env/.env.example`.
-- **Orchestration in `infra/`**: `docker-compose.yml` wires `backend` + `frontend` + Redis (pinned, e.g. `redis:7-alpine`). `docker-compose.dev.yml` adds bind mounts/hot-reload without replacing the base topology.
-- **Image versioning**: tag with commit SHA or semver, not `latest`.
+- **Healthcheck**: backend hits `/health`; frontend nginx hits `/`.
+- **No secrets in images**: all config via env vars injected at runtime.
+- **Orchestration**: `docker-compose.yml` lives at the **repo root** (not an `infra/` directory — that path doesn't exist; README currently references it incorrectly). There is no separate `docker-compose.dev.yml` — local dev without Docker runs `npm run dev:backend` / `dev:frontend` directly against a locally-run Redis container instead.
+
+## Multi-instance deployment
+
+Production topology is **two backend instances behind an nginx gateway**, not a single backend — this entire section was previously undocumented here:
+
+- `docker-compose.yml` (root) defines `backend_a` / `backend_b` (same image, differ only by `INSTANCE_TAG: A`/`B`, not directly published), a `gateway` service (`nginx:1.27-alpine`, publishes the only backend-facing host port `4000:80`), `frontend`, and `redis` (**no published host port** — removed in commit `776976c` since backends only need it over the internal compose network and it has no auth).
+- **Sticky routing** (`nginx/nginx.conf`): parses a room code's first character — the fixed `INSTANCE_TAG` (see "Session Identity & Anti-Abuse" above) — from the Socket.IO handshake query or the `/rooms/<CODE>...` path, and routes `A`-prefixed codes to `backend_a`, `B`-prefixed to `backend_b`. Requests carrying no room code (room creation, public-lobby list, daily routes, `/health`) go to a round-robin pool instead.
+- **Why sticky routing is required**: `GameModeRegistry` (live game state), `HostMigrationTracker` (pending host-migration timers), and the per-room-code lock (`infrastructure/realtime/room-lock.ts`) are all **process-local, not shared** across instances — only Socket.IO's own broadcast fan-out is made cross-instance-safe, via `@socket.io/redis-adapter` (wired in `backend/src/index.ts`). A room's whole lifetime must therefore stay pinned to the instance that created it.
+- **Instance-scoped boot cleanup**: `clearPublicLobbies(instanceTag)` runs once at startup to drop only *this instance's* stale public-lobby Redis entries (filtered by the `instanceTag` prefix, scoped `srem`) — fixed in commit `070219a` after a prior version wiped the *other* instance's live rooms too on every restart, since both instances share one Redis.
+- **Env vars actually read** (`backend/src/infrastructure/config/env.ts` unless noted): `PORT` (default `4000`), `CORS_ORIGIN` (default `http://localhost:5173`), `REDIS_URL` (default `redis://redis:6379` in Docker), `INSTANCE_TAG` (default `'A'`, undocumented in README), `E2E_FIXED_WORDS` (read in `infrastructure/persistence/words/in-memory-word-repository.ts`, e2e-only, undocumented in README).
 
 ## Testing
 

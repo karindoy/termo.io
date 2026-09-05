@@ -860,6 +860,7 @@ label.field {
 .tile-cursor {
   border-color: var(--color-info);
   box-shadow: 0 0 0 1px var(--color-info);
+  border-bottom: 0.25em solid rgba(4, 13, 31, 0.502) !important;
 }
 
 .tile-correct {
@@ -1071,7 +1072,7 @@ label.field {
     padding-bottom: 4px;
   }
 
-  .other-players-list > * {
+  .other-players-list>* {
     flex: 0 0 auto;
   }
 

@@ -6,13 +6,14 @@ A competitive, real-time multiplayer word-guessing game in Brazilian Portuguese 
 
 ## Features
 
-- **Two game modes** — Championship (per-word scoring, 6 attempts) and Race (infinite attempts, first to finish all 5 words wins)
+- **Two multiplayer modes** — Championship (per-word scoring, fewest-attempts wins, tie-break on a final tie) and Race (infinite attempts, first to finish all words without ever timing out wins)
+- **Three daily singleplayer puzzles** — Termo, Dueto, and Quarteto, same secret word(s) for every player worldwide each day, no room/account needed, reachable from the global navbar
 - **Instant play** — join with a nickname and room code, no account required
 - **Real-time shared board** — every player's guesses, attempt counts, and letter feedback are visible to everyone as they happen
 - **Accent-insensitive input** — typing plain letters matches accented secret letters (e.g. `a` matches `ã`, `c` matches `ç`)
 - **Flexible letter input** — click any cell or use arrow keys to position the cursor before typing
 - **Private rooms** — share a generated room code with friends (up to 50 players)
-- **Auto-restart** — a new match begins automatically 5 seconds after each game ends
+- **Host-controlled restart** — after a game ends, the host starts a new match with a 10-second countdown; the room and its players carry over
 - **Reconnect-safe** — refreshing mid-game restores your board state and remaining attempts
 
 ---
@@ -43,8 +44,10 @@ Architecture follows layered/clean architecture: `domain` → `application` → 
 ```bash
 git clone https://github.com/your-org/termo.io.git
 cd termo.io
-docker compose -f infra/docker-compose.yml up --build
+docker compose up --build
 ```
+
+This starts two backend instances (`backend_a`/`backend_b`) behind an nginx gateway with sticky routing by room code, plus Redis and the frontend — see `docs/requirements/infra-and-deployment.md` for the full topology.
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
@@ -73,15 +76,17 @@ termo.io/
 ├── backend/          # Fastify + Socket.io server, clean architecture
 │   └── src/
 │       ├── domain/           # Word matching, scoring, game rules
-│       ├── application/      # Use cases + game-mode strategies
+│       ├── application/      # Use cases + game-mode strategies (incl. daily-modes/)
 │       ├── infrastructure/   # Redis, word dictionary, Socket.io setup
-│       └── presentation/     # HTTP routes, socket handlers, DTOs
+│       └── presentation/     # HTTP routes (incl. /daily), socket handlers, DTOs
 ├── frontend/         # React + Vite UI
 │   └── src/
-│       ├── components/       # WordGrid, Keyboard, Lobby, PlayerBoard
-│       └── hooks/            # useGame, useRaceGame, useSocket
+│       ├── components/       # WordGrid, Keyboard, Lobby, PlayerBoard, DailyGameRoom, DailyModeBar...
+│       └── hooks/            # useGame, useRaceGame, useDailyGame, useGuessInput...
 ├── e2e/              # Playwright end-to-end suite (see below), runs via Docker
-└── infra/            # Docker Compose, Nginx, env examples, CI config
+├── nginx/            # Gateway config (sticky routing across the two backend instances)
+├── docs/requirements/ # Per-feature business + technical requirements docs (see below)
+└── docker-compose.yml # backend_a/backend_b + nginx gateway + frontend + redis
 ```
 
 ---
@@ -89,15 +94,22 @@ termo.io/
 ## Game Modes
 
 ### Championship Mode
-- 5 words per game, up to **6 attempts** per word
-- **First player to guess a word** earns a point
-- If no one guesses within 6 attempts, every eligible player gets 2 bonus attempts
-- Highest score after 5 words wins
+- 5 words per game by default (room-configurable 1-15), up to **6 attempts** per word by default (configurable 1-10)
+- The **fewest-attempts solver** of each word earns the point — not first-to-solve; the word stays open until every eligible player finishes
+- If no one guesses within the attempt limit, every eligible player gets 2 bonus attempts
+- Highest score after all words wins; a final tie triggers a **tie-break round** (3 attempts, 2 minutes) between just the tied players
 
 ### Race Mode
-- 5 words per game, **unlimited attempts**
-- **First player to correctly guess all 5 words wins**
+- 5 words per game by default, **unlimited attempts** per word (but each word still has a time limit)
+- **First player to correctly guess every word, having never timed out on any of them, wins**
 - Mid-race UI is intentionally minimal — no attempt counters or word-resolved banners while the race is live; all results are revealed together at the end
+
+### Daily Games — Termo, Dueto, Quarteto
+- Solo puzzles, no room or account needed — same secret word(s) for every player worldwide each calendar day
+- **Termo**: 1 word / 6 attempts · **Dueto**: 2 words / 7 attempts (one guess checked against both boards at once) · **Quarteto**: 4 words / 9 attempts
+- Stats, streaks, and history are tracked locally in your browser only
+
+For full business + technical detail on any of the above, see [`docs/requirements/`](docs/requirements/README.md).
 
 ---
 
@@ -143,20 +155,22 @@ deterministic tie-break — `run.sh` computes and passes this automatically.
 
 ---
 ## TODO
--ranqueada (?)
--no fim aparecer quantas tentativas a pessoa tentou
--termo,dueto, quarteto
--campeaonato ganha pessoa com menos guess
+- ranqueada (?)
+- no fim aparecer quantas tentativas a pessoa tentou (end-of-game scoreboard currently shows who solved each word, not attempt counts)
 
 ## Environment Variables
 
-See `infra/docker-compose.yml` for the full set wired up per service. Never commit real secrets.
+See `docker-compose.yml` (repo root) for the full set wired up per service. Never commit real secrets.
 
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `4000` | Backend HTTP/Socket.io port |
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed frontend origin |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
+| `REDIS_URL` | `redis://localhost:6379` (local) / `redis://redis:6379` (Docker) | Redis connection string |
+| `INSTANCE_TAG` | `A` | Selects this backend instance's room-code prefix for nginx sticky routing (see `docker-compose.yml` / `nginx/nginx.conf`) |
+| `E2E_FIXED_WORDS` | unset | Comma-separated secret words, consumed in draw order — lets the e2e suite force deterministic word draws. Set automatically by `e2e/run.sh`, not used in normal dev/prod |
+
+The backend also runs global rate limiting (100 req/min/IP, tighter per-route limits on room creation/lookup and daily-guess submission) and `@fastify/helmet` security headers — see `docs/requirements/session-identity-and-security.md`.
 
 ---
 

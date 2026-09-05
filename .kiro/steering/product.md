@@ -4,7 +4,7 @@ inclusion: always
 
 # Product Overview
 
-**termo.io** — a Brazilian Portuguese word-guessing game (Wordle-style, "Termo") with two families of play: real-time **multiplayer rooms** (shipped) and **daily singleplayer puzzles** (planned) — Termo, Dueto, and Quarteto.
+**termo.io** — a Brazilian Portuguese word-guessing game (Wordle-style, "Termo") with two families of play, both **shipped**: real-time **multiplayer rooms** and **daily singleplayer puzzles** — Termo, Dueto, and Quarteto.
 
 ## Core Concept
 
@@ -30,11 +30,12 @@ Players guess hidden Brazilian Portuguese words. Every word is always **exactly 
 All players in a room see each other's nickname, attempts, letter colors, and positions in real time — guesses are not private, the board is shared/visible to everyone.
 
 #### Championship Mode
-- 5 words per game.
-- Each word allows a **maximum of 6 attempts** per player.
+- 5 words per game by default (room-configurable 1-15).
+- Each word allows a **maximum of 6 attempts** per player by default (room-configurable 1-10).
 - For each word, the **fewest-attempts solver scores the point** (not first-to-solve — the word stays open until every eligible player finishes; ties broken by earliest solve time).
 - After a word is resolved, the room moves to the next word.
-- Winner = highest score after 5 words.
+- Winner = highest score after all words.
+- **Tie-break**: if two or more players are tied for the highest score at the end, a tie-break round is played among just the tied players (3 attempts, 2-minute limit) on one new word; first solve wins. Players not tied are barred from guessing during it.
 
 #### Race Mode (Time Attack)
 - 5 words per game.
@@ -42,7 +43,7 @@ All players in a room see each other's nickname, attempts, letter colors, and po
 - The **first player to correctly guess all words wins the game** — it's a race, not a per-word point system.
 - **Minimal in-game UI by design**: hides the attempts counter and any mid-race banner while the race is live. All resolved words (own and other players') are only shown together in a single end-of-race summary, once the race itself has finished.
 
-### Singleplayer Daily Games (planned)
+### Singleplayer Daily Games (shipped)
 
 No rooms, no lobby, no other players — a solo player against one or more secret words that are the **same for every player worldwide on a given calendar day**. Three variants, differing only in how many words are solved at once and the shared attempt budget:
 
@@ -76,18 +77,19 @@ No rooms, no lobby, no other players — a solo player against one or more secre
 - Flexible letter input: within the active guess row, a player can reposition the cursor with arrow keys or by clicking/tapping any cell, then insert/overwrite the letter at that position — not limited to typing strictly left-to-right from the first empty cell.
 - Scoring (Championship Mode) and race-to-finish detection (Race Mode).
 - Brazilian Portuguese word list/dictionary for secret words and valid-guess validation: fixed 5-letter length, accent-insensitive matching (base letter matches its accented counterpart), no repeat-avoidance — the same word can legitimately reappear across games/sessions.
-- After a game finishes, a new match automatically begins after a 5-second countdown, preserving the room and its current players.
+- After a game finishes, the host must trigger a restart (`room:restart`); a 10-second countdown then runs for everyone before the new match begins, preserving the room and its current players. This is not automatic — non-host players see a waiting state until the host acts.
 - local player's word grid remains fixed in place, while other players' word grids stay permanently on the left side of the screen with all attempt rows pre-rendered from the start to prevent layout shifts, up to down.
 - keyboard is permanently anchored to the bottom of the screen across all game modes and screen sizes.
 - room settings allow selecting from 30 seconds to 10 minutes per round, with values stored internally as milliseconds but not be visible to user.
 - if no player guesses the current word within the initial 6 attempts, every eligible player receives 2 additional attempts on the same word before the game advances.
 - when a player finishes all words and wins the race, a winner modal is immediately displayed to every player in the room before the end-of-race summary is shown.
 
-## Planned Features (singleplayer)
+## Shipped Features (singleplayer)
 
 - Three daily singleplayer games — Termo (1 word / 6 attempts), Dueto (2 words / 7 attempts), Quarteto (4 words / 9 attempts) — each with its own date-seeded secret word(s), shared globally across all players for the day.
 - Multi-board guess input: one typed guess is submitted once and scored against every still-unsolved board in the puzzle simultaneously (Dueto, Quarteto).
-- Results/streak tracking is a client-local concern (e.g. `localStorage`) unless/until accounts exist — no per-player server-side history is in scope yet.
+- Results/streak tracking is a client-local concern (`localStorage`) — no accounts exist, no per-player server-side history is kept.
+- Reached via a persistent global navbar present on every screen (not a dedicated entry-screen section — see `tech.md`), with a post-game stats modal (games played, win rate, streaks, attempt distribution) and a share button.
 
 ## Out of scope (for now)
 
