@@ -6,7 +6,7 @@ inclusion: always
 
 ## Language & Runtime
 
-- **Node.js** (LTS) + **TypeScript**, `strict: true` in `tsconfig.json` — non-negotiable. No `any`; use `unknown` + narrowing or generics.
+- **Kotlin 2.4** on the JVM (**Java 21**), built with **Maven** (wrapper committed at `backend/mvnw`) on the **Quarkus 3.40 LTS** framework. Prefer types, nullability, and sealed hierarchies over `any`-style escape hatches.
 
 ## Project Structure
 
@@ -26,27 +26,27 @@ backend/
 │   │   │   ├── game/          # start-game, submit-guess, advance-to-next-word, end-game, resolve-tie-break
 │   │   │   └── daily/          # submit-daily-guess — shared by Termo/Dueto/Quarteto
 │   │   └── game-modes/        # GameMode interface + ChampionshipMode, RaceMode implementations
-│   │       └── daily-modes/    # daily-mode-config.ts — one config, not separate per-mode classes: {wordCount,maxAttempts} for Termo/Dueto/Quarteto
+│   │       └── daily-modes/    # DailyModeConfig.kt — one config, not separate per-mode classes: {wordCount,maxAttempts} for Termo/Dueto/Quarteto
 │   ├── infrastructure/
 │   │   ├── persistence/
 │   │   │   ├── redis/         # RoomRepository impl, live game/attempt state, TTL cleanup
 │   │   │   └── words/         # WordRepository impl (BR-PT dictionary file), DailyWordResolver
-│   │   ├── realtime/          # Socket.io server setup, event adapters
+│   │   ├── realtime/          # WebSockets Next setup, room hub, session store, timers, registries
 │   │   └── config/            # env loading, DI/composition root
 │   ├── presentation/
 │   │   ├── http/
 │   │   │   ├── routes/        # public-rooms list, health, daily/:mode (e.g. /daily/termo/config, /daily/termo/guess)
 │   │   │   ├── controllers/
-│   │   │   └── middlewares/   # error-handler, validation (zod), rate-limit
+│   │   │   └── middlewares/   # error mappers, validation, rate-limit filter
 │   │   └── sockets/
 │   │       ├── handlers/      # room:join, room:leave, game:start, guess:submit
-│   │       └── dto/           # socket payload schemas (zod)
+│   │       └── dto/           # socket payload DTOs
 │   └── shared/
 │       ├── types/
 │       └── utils/
 ├── Dockerfile
-├── package.json
-└── tsconfig.json
+├── pom.xml
+└── mvnw
 
 frontend/
 ├── src/
@@ -67,7 +67,7 @@ infra/
 └── ci/                        # lint/typecheck/test/build/push pipelines
 ```
 
-Root: `package.json` (npm workspaces: `backend`, `frontend`), `CODING_STANDARDS.md`, `.kiro/`, `README.md`.
+Root: `package.json` (npm workspaces: `frontend`, `e2e`), `CODING_STANDARDS.md`, `.kiro/`, `README.md`. The `backend/` is a self-contained Maven/Quarkus project (`pom.xml`, `mvnw`, `src/main/kotlin`).
 
 ## Responsibility Boundaries
 
@@ -77,9 +77,10 @@ Root: `package.json` (npm workspaces: `backend`, `frontend`), `CODING_STANDARDS.
 
 ## Backend
 
-- **Framework**: Fastify (preferred) or Express for HTTP (room creation/lookup, health).
-- **Real-time**: Socket.io for room state, guess submissions, and broadcasting. Real-time concerns live in `infrastructure`/`presentation` — domain logic stays transport-agnostic.
-- **Validation**: `zod` at every boundary (HTTP body, socket event payloads, env vars) — never trust raw client input.
+- **Framework**: Quarkus REST (JAX-RS + Jackson) for HTTP (room creation/lookup, health, daily puzzles).
+- **Real-time**: Quarkus WebSockets Next for room state, guess submissions, and broadcasting, using a JSON `{event, data}` envelope. Real-time concerns live in `infrastructure`/`presentation` — domain logic stays transport-agnostic.
+- **Validation**: Bean Validation on HTTP request DTOs plus explicit validation of WebSocket payloads — never trust raw client input.
+- **API-first**: `src/main/resources/META-INF/openapi.yaml` is the REST source of truth; `openapi-generator-maven-plugin` generates the `*Api` JAX-RS interfaces + models and `*ApiImpl` implements them. `/q/openapi` serves the spec, `/q/swagger-ui` the docs; `/ws/*` is documented in `src/main/openapi/asyncapi.yaml`.
 - **Persistence**:
   - **Redis** for live room/game state (players, word index, attempts, scores) — short-lived with TTL cleanup.
   - **Postgres** or a versioned static word list file/SQLite for the BR-PT dictionary. Add a DB only if word-list management needs it.
@@ -171,7 +172,7 @@ Layered/Clean Architecture — `domain` → `application` → `infrastructure` �
 |---|---|
 | `domain` | Word matching rules, scoring, round/game lifecycle. Zero external imports. |
 | `application` | Use cases: create room, join room, submit guess, advance word. |
-| `infrastructure` | Socket.io, Redis, word dictionary store. |
+| `infrastructure` | WebSockets Next setup, Redis, word dictionary store, timers. |
 | `presentation` | HTTP routes + socket event handlers. |
 
 ## Design Patterns
@@ -180,12 +181,12 @@ Layered/Clean Architecture — `domain` → `application` → `infrastructure` �
 - **Strategy**: `GameMode` interface with `ChampionshipMode` and `RaceMode` implementations. New modes implement the interface; no branching in use-cases.
 - **Factory**: `RoomFactory`/`GameFactory` for constructing valid room/game state (assigns secret words, initializes per-player attempt state).
 - **Observer/Event Emitter**: domain events (`guess.submitted`, `word.resolved`, `game.ended`) decoupled from socket broadcasting.
-- **Adapter**: Socket.io/Redis clients wrapped behind internal interfaces for mockability in tests.
+- **Adapter**: Redis / WebSocket connections wrapped behind internal interfaces for mockability in tests.
 
 ## Conventions
 
-- Files: `kebab-case.ts`. Classes/types: `PascalCase`. Functions/variables: `camelCase`. Constants: `UPPER_SNAKE_CASE`.
-- Tests co-located as `*.spec.ts` next to the source file they cover.
+- Files: `PascalCase.kt` (Kotlin convention). Classes/types: `PascalCase`. Functions/variables: `camelCase`. Constants: `UPPER_SNAKE_CASE`.
+- Tests live under `backend/src/test/kotlin` as `*Test.kt` / `*IT.kt` (JUnit 5 + RestAssured).
 - One exported concept per file where practical; barrel `index.ts` only at module boundaries (`domain/entities/index.ts`), not throughout.
 - Socket event names are namespaced and typed in `backend/src/presentation/sockets/dto`, shared with the frontend via a linked types package or copied contract types — never re-declared ad hoc on the client.
 - New game modes are added by implementing `GameMode` in `backend/src/application/game-modes/`, not by branching inside use-cases.
@@ -193,9 +194,9 @@ Layered/Clean Architecture — `domain` → `application` → `infrastructure` �
 
 ## Containerization
 
-- **Per-package `Dockerfile`**: `backend/Dockerfile` and `frontend/Dockerfile` live next to their code, but build with the **repo root** as build context (needed for npm-workspace resolution: `npm ci --workspace=<pkg> --include-workspace-root`).
-- **Multi-stage builds**: `deps` → `build` → `runtime`. Final image contains only compiled output and production `node_modules`.
-- **Non-root user**: runtime containers run as `USER node`.
+- **Per-package `Dockerfile`**: `backend/Dockerfile` and `frontend/Dockerfile` live next to their code, but build with the **repo root** as build context (frontend needs npm-workspace resolution; the backend copies `backend/` only).
+- **Multi-stage builds**: `build` → `runtime`. The backend builds with Maven on `eclipse-temurin:21` and ships only the Quarkus app; the frontend ships static assets behind nginx.
+- **Non-root user**: runtime containers run as a non-root user (`quarkus` / nginx).
 - **Healthcheck**: backend hits `/health`; frontend nginx hits `/`.
 - **No secrets in images**: all config via env vars injected at runtime.
 - **Orchestration**: `docker-compose.yml` lives at the **repo root** (not an `infra/` directory — that path doesn't exist; README currently references it incorrectly). There is no separate `docker-compose.dev.yml` — local dev without Docker runs `npm run dev:backend` / `dev:frontend` directly against a locally-run Redis container instead.
@@ -205,29 +206,29 @@ Layered/Clean Architecture — `domain` → `application` → `infrastructure` �
 Production topology is **two backend instances behind an nginx gateway**, not a single backend — this entire section was previously undocumented here:
 
 - `docker-compose.yml` (root) defines `backend_a` / `backend_b` (same image, differ only by `INSTANCE_TAG: A`/`B`, not directly published), a `gateway` service (`nginx:1.27-alpine`, publishes the only backend-facing host port `4000:80`), `frontend`, and `redis` (**no published host port** — removed in commit `776976c` since backends only need it over the internal compose network and it has no auth).
-- **Sticky routing** (`nginx/nginx.conf`): parses a room code's first character — the fixed `INSTANCE_TAG` (see "Session Identity & Anti-Abuse" above) — from the Socket.IO handshake query or the `/rooms/<CODE>...` path, and routes `A`-prefixed codes to `backend_a`, `B`-prefixed to `backend_b`. Requests carrying no room code (room creation, public-lobby list, daily routes, `/health`) go to a round-robin pool instead.
-- **Why sticky routing is required**: `GameModeRegistry` (live game state), `HostMigrationTracker` (pending host-migration timers), and the per-room-code lock (`infrastructure/realtime/room-lock.ts`) are all **process-local, not shared** across instances — only Socket.IO's own broadcast fan-out is made cross-instance-safe, via `@socket.io/redis-adapter` (wired in `backend/src/index.ts`). A room's whole lifetime must therefore stay pinned to the instance that created it.
+- **Sticky routing** (`nginx/nginx.conf`): parses a room code's first character — the fixed `INSTANCE_TAG` (see "Session Identity & Anti-Abuse" above) — from the native WebSocket handshake query (`?code=...`) or the `/rooms/<CODE>...` path, and routes `A`-prefixed codes to `backend_a`, `B`-prefixed to `backend_b`. Requests carrying no room code (room creation, public-lobby list, daily routes, `/health`) go to a round-robin pool instead.
+- **Why sticky routing is required**: `GameModeRegistry` (live game state), `HostMigrationTracker` (pending host-migration timers), the per-room-code lock (`infrastructure/realtime/RoomLocks.kt`), and WebSocket broadcast fan-out (`presentation/sockets/RoomHub.kt`) are all **process-local, not shared** across instances. A room's whole lifetime must therefore stay pinned to the instance that created it; there is no cross-instance broadcast adapter.
 - **Instance-scoped boot cleanup**: `clearPublicLobbies(instanceTag)` runs once at startup to drop only *this instance's* stale public-lobby Redis entries (filtered by the `instanceTag` prefix, scoped `srem`) — fixed in commit `070219a` after a prior version wiped the *other* instance's live rooms too on every restart, since both instances share one Redis.
-- **Env vars actually read** (`backend/src/infrastructure/config/env.ts` unless noted): `PORT` (default `4000`), `CORS_ORIGIN` (default `http://localhost:5173`), `REDIS_URL` (default `redis://redis:6379` in Docker), `INSTANCE_TAG` (default `'A'`, undocumented in README), `E2E_FIXED_WORDS` (read in `infrastructure/persistence/words/in-memory-word-repository.ts`, e2e-only, undocumented in README).
+- **Env vars actually read** (`backend/src/main/resources/application.properties` + `InstanceConfig`): `PORT` (default `4000`), `CORS_ORIGIN` (default `http://localhost:5173`), `REDIS_URL` (default `redis://localhost:6379` outside Docker; compose sets `redis://redis:6379`), `INSTANCE_TAG` (default `'A'`), `E2E_FIXED_WORDS` (read in `InMemoryWordRepository`, e2e-only).
 
 ## Testing
 
-- **Unit**: Vitest or Jest for `domain`/`application` — word-matching/feedback logic, attempt limits, scoring, win conditions for both modes.
-- **Integration**: repository tests against real (containerized) Redis.
-- **E2E/real-time**: Socket.io client-driven tests simulating multi-player rooms (join, concurrent guesses, first-correct-guess race in Championship, first-to-finish in Race).
+- **Unit**: JUnit 5 for `domain`/`application` — word-matching/feedback logic, attempt limits, scoring, win conditions for both modes.
+- **Integration**: `@QuarkusTest` + RestAssured against a real/containerized Redis.
+- **E2E/real-time**: Playwright driving the real HTTP + native WebSocket contract, simulating multi-player rooms (join, concurrent guesses, first-correct-guess race in Championship, first-to-finish in Race).
 
 ## Tooling
 
-- ESLint (`@typescript-eslint`) + Prettier, pre-commit hook.
+- detekt / ktlint for Kotlin + Prettier for the frontend, pre-commit hook.
 - Conventional Commits.
 - CI gate: type-check, lint, test before merge.
 
 ## Common Commands
 
 ```bash
-npm run dev        # start dev server (API + sockets)
-npm run build      # compile TypeScript
-npm run test       # run unit/integration tests
-npm run lint       # eslint
-npm run typecheck  # tsc --noEmit
+npm run dev:backend   # ./backend/mvnw -f backend/pom.xml quarkus:dev (hot reload)
+npm run dev:frontend  # Vite dev server
+npm run build         # build frontend + package backend
+npm run test          # run backend JUnit/Quarkus tests
+npm run typecheck     # frontend tsc --noEmit
 ```

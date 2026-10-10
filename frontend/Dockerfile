@@ -4,9 +4,9 @@
 FROM node:20.16.0-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
-RUN npm ci --workspace=frontend --include-workspace-root
+COPY e2e/package.json e2e/package.json
+RUN npm ci --workspace=frontend
 
 FROM deps AS build
 COPY frontend/tsconfig.json frontend/tsconfig.json

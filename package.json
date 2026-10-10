@@ -2,19 +2,17 @@
   "name": "termo.io",
   "private": true,
   "workspaces": [
-    "backend",
     "frontend",
     "e2e"
   ],
   "scripts": {
-    "dev:backend": "npm run dev -w backend",
+    "dev:backend": "./backend/mvnw -f backend/pom.xml quarkus:dev",
     "dev:frontend": "npm run dev -w frontend",
-    "build": "npm run build -w backend && npm run build -w frontend",
-    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
-    "test": "npm run test -w backend",
+    "build": "npm run build -w frontend && ./backend/mvnw -f backend/pom.xml package -DskipTests",
+    "build:frontend": "npm run build -w frontend",
+    "build:backend": "./backend/mvnw -f backend/pom.xml package -DskipTests",
+    "typecheck": "npm run typecheck -w frontend",
+    "test": "./backend/mvnw -f backend/pom.xml test",
     "test:e2e": "npm run test:e2e -w e2e"
-  },
-  "dependencies": {
-    "@fastify/cors": "^8.5.0"
   }
 }

@@ -1,31 +1,22 @@
-# Build context is the repo root (required to resolve npm workspaces).
-# See infra/docker-compose.yml: context: .., dockerfile: backend/Dockerfile
+# Multi-stage build for the Kotlin/Quarkus backend.
+# Build context is the repository root (see docker-compose.yml): context: ., dockerfile: backend/Dockerfile
 
-FROM node:20.16.0-alpine AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-COPY backend/package.json backend/package.json
-COPY frontend/package.json frontend/package.json
-RUN npm ci --workspace=backend --include-workspace-root
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /project
+COPY backend/pom.xml ./pom.xml
+COPY backend/src ./src
+RUN mvn -B -q -DskipTests package
 
-FROM deps AS build
-COPY backend/tsconfig.json backend/tsconfig.json
-COPY backend/src backend/src
-RUN npm run build --workspace=backend
-
-FROM node:20.16.0-alpine AS runtime
-WORKDIR /app
-ENV NODE_ENV=production
-COPY package.json package-lock.json ./
-COPY backend/package.json backend/package.json
-COPY frontend/package.json frontend/package.json
-RUN npm ci --workspace=backend --include-workspace-root --omit=dev
-COPY --from=build /app/backend/dist ./backend/dist
-
-WORKDIR /app/backend
-USER node
+FROM eclipse-temurin:21-jre-alpine AS runtime
+RUN addgroup -S quarkus && adduser -S quarkus -G quarkus
+WORKDIR /deployments
+COPY --from=build /project/target/quarkus-app/lib/ ./lib/
+COPY --from=build /project/target/quarkus-app/*.jar ./
+COPY --from=build /project/target/quarkus-app/app/ ./app/
+COPY --from=build /project/target/quarkus-app/quarkus/ ./quarkus/
+USER quarkus
 EXPOSE 4000
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
-  CMD node -e "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
-
-CMD ["node", "dist/index.js"]
+ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+  CMD wget -qO- http://localhost:4000/health >/dev/null || exit 1
+CMD ["java", "-jar", "quarkus-run.jar"]

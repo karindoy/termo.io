@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const WORDLIST_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
-  '../../../backend/src/infrastructure/persistence/words/wordlist.txt',
+  '../../../backend/src/main/resources/wordlist.txt',
 );
 
 const ASCII_WORD_PATTERN = /^[a-z]{5}$/;

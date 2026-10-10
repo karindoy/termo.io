@@ -1,0 +1,675 @@
+asyncapi: 3.0.0
+info:
+  title: termo.io Realtime API
+  version: 0.1.0
+  description: >
+    WebSocket contract for multiplayer rooms. A client opens a native WebSocket to
+    `/ws/championship` or `/ws/race` (optionally with `?code=<ROOM_CODE>` on the
+    handshake so a reverse proxy can pin the connection to the owning instance), then
+    exchanges JSON envelopes of the form `{ "event": "<name>", "data": { ... } }`.
+    Messages are broadcast to every connection that joined the same room code.
+servers:
+  gateway:
+    host: '{host}:{port}'
+    protocol: ws
+    description: nginx gateway or the backend directly
+    variables:
+      host:
+        default: localhost
+      port:
+        default: '4000'
+defaultContentType: application/json
+channels:
+  championship:
+    address: /ws/championship
+    description: Championship-mode room (per-word fewest-attempts scoring, tie-break).
+    messages:
+      clientRoomJoin:
+        $ref: '#/components/messages/ClientRoomJoin'
+      clientRoomLeave:
+        $ref: '#/components/messages/ClientRoomLeave'
+      clientRoomSettingsUpdate:
+        $ref: '#/components/messages/ClientRoomSettingsUpdate'
+      clientRoomStart:
+        $ref: '#/components/messages/ClientRoomStart'
+      clientRoomRestart:
+        $ref: '#/components/messages/ClientRoomRestart'
+      clientGuessSubmit:
+        $ref: '#/components/messages/ClientGuessSubmit'
+      serverRoomSession:
+        $ref: '#/components/messages/ServerRoomSession'
+      serverLobbyState:
+        $ref: '#/components/messages/ServerLobbyState'
+      serverRoomState:
+        $ref: '#/components/messages/ServerRoomState'
+      serverRoomPlayers:
+        $ref: '#/components/messages/ServerRoomPlayers'
+      serverRoomCountdownStarted:
+        $ref: '#/components/messages/ServerRoomCountdownStarted'
+      serverGameStart:
+        $ref: '#/components/messages/ServerGameStart'
+      serverRoundStarted:
+        $ref: '#/components/messages/ServerRoundStarted'
+      serverRoundExtraAttempts:
+        $ref: '#/components/messages/ServerRoundExtraAttempts'
+      serverTiebreakStarted:
+        $ref: '#/components/messages/ServerTiebreakStarted'
+      serverWordResolved:
+        $ref: '#/components/messages/ServerWordResolved'
+      serverGameFinished:
+        $ref: '#/components/messages/ServerGameFinished'
+      serverHostMigrated:
+        $ref: '#/components/messages/ServerHostMigrated'
+      serverGuessResult:
+        $ref: '#/components/messages/ServerGuessResult'
+      serverError:
+        $ref: '#/components/messages/ServerError'
+  race:
+    address: /ws/race
+    description: Race-mode room (unlimited attempts, first to finish without timing out wins).
+    messages:
+      clientRoomJoin:
+        $ref: '#/components/messages/ClientRoomJoin'
+      clientRoomLeave:
+        $ref: '#/components/messages/ClientRoomLeave'
+      clientRoomSettingsUpdate:
+        $ref: '#/components/messages/ClientRoomSettingsUpdate'
+      clientRoomStart:
+        $ref: '#/components/messages/ClientRoomStart'
+      clientRoomRestart:
+        $ref: '#/components/messages/ClientRoomRestart'
+      clientGuessSubmit:
+        $ref: '#/components/messages/ClientGuessSubmit'
+      serverRoomSession:
+        $ref: '#/components/messages/ServerRoomSession'
+      serverLobbyState:
+        $ref: '#/components/messages/ServerLobbyState'
+      serverRaceRoomState:
+        $ref: '#/components/messages/ServerRaceRoomState'
+      serverRoomPlayers:
+        $ref: '#/components/messages/ServerRoomPlayers'
+      serverRoomCountdownStarted:
+        $ref: '#/components/messages/ServerRoomCountdownStarted'
+      serverRaceStarted:
+        $ref: '#/components/messages/ServerRaceStarted'
+      serverPlayerWordStarted:
+        $ref: '#/components/messages/ServerPlayerWordStarted'
+      serverPlayerWordResolved:
+        $ref: '#/components/messages/ServerPlayerWordResolved'
+      serverRaceFinished:
+        $ref: '#/components/messages/ServerRaceFinished'
+      serverHostMigrated:
+        $ref: '#/components/messages/ServerHostMigrated'
+      serverRaceGuessResult:
+        $ref: '#/components/messages/ServerRaceGuessResult'
+      serverError:
+        $ref: '#/components/messages/ServerError'
+operations:
+  receiveChampionshipClientEvent:
+    action: receive
+    channel:
+      $ref: '#/channels/championship'
+  sendChampionshipServerEvent:
+    action: send
+    channel:
+      $ref: '#/channels/championship'
+  receiveRaceClientEvent:
+    action: receive
+    channel:
+      $ref: '#/channels/race'
+  sendRaceServerEvent:
+    action: send
+    channel:
+      $ref: '#/channels/race'
+components:
+  messages:
+    ClientRoomJoin:
+      name: room:join
+      title: Join a room
+      payload:
+        $ref: '#/components/schemas/JoinPayload'
+    ClientRoomLeave:
+      name: room:leave
+      title: Leave a room
+      payload:
+        $ref: '#/components/schemas/MembershipPayload'
+    ClientRoomSettingsUpdate:
+      name: room:settings:update
+      title: Update lobby settings
+      payload:
+        $ref: '#/components/schemas/UpdateSettingsPayload'
+    ClientRoomStart:
+      name: room:start
+      title: Start the game (host only)
+      payload:
+        $ref: '#/components/schemas/MembershipPayload'
+    ClientRoomRestart:
+      name: room:restart
+      title: Restart the game (host only)
+      payload:
+        $ref: '#/components/schemas/RestartPayload'
+    ClientGuessSubmit:
+      name: guess:submit
+      title: Submit a guess
+      payload:
+        $ref: '#/components/schemas/GuessPayload'
+    ServerRoomSession:
+      name: room:session
+      title: Per-room session secret issued on join
+      payload:
+        $ref: '#/components/schemas/RoomSessionPayload'
+    ServerLobbyState:
+      name: lobby:state
+      title: Full lobby state
+      payload:
+        $ref: '#/components/schemas/RoomRecord'
+    ServerRoomState:
+      name: room:state
+      title: Championship room snapshot for the joining player
+      payload:
+        $ref: '#/components/schemas/RoomState'
+    ServerRaceRoomState:
+      name: room:state
+      title: Race room snapshot for the joining player
+      payload:
+        $ref: '#/components/schemas/RaceRoomState'
+    ServerRoomPlayers:
+      name: room:players
+      title: Room player list
+      payload:
+        type: array
+        items:
+          $ref: '#/components/schemas/RoomPlayer'
+    ServerRoomCountdownStarted:
+      name: room:countdown:started
+      title: Start/restart countdown
+      payload:
+        $ref: '#/components/schemas/CountdownStartedPayload'
+    ServerGameStart:
+      name: game:start
+      title: Game started (championship)
+      payload:
+        $ref: '#/components/schemas/RoomRecord'
+    ServerRoundStarted:
+      name: round:started
+      title: A new championship word round started
+      payload:
+        $ref: '#/components/schemas/RoundSnapshot'
+    ServerRoundExtraAttempts:
+      name: round:extra-attempts
+      title: Nobody solved the word; every player gains 2 attempts
+      payload:
+        $ref: '#/components/schemas/RoundSnapshot'
+    ServerTiebreakStarted:
+      name: tiebreak:started
+      title: Tie-break round started between the tied candidates
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/RoundSnapshot'
+          - type: object
+            required: [candidateIds]
+            properties:
+              candidateIds:
+                type: array
+                items:
+                  type: string
+    ServerWordResolved:
+      name: word:resolved
+      title: A championship word was resolved
+      payload:
+        $ref: '#/components/schemas/WordResolved'
+    ServerGameFinished:
+      name: game:finished
+      title: Championship game finished
+      payload:
+        $ref: '#/components/schemas/GameFinished'
+    ServerRaceStarted:
+      name: race:started
+      title: Race started
+      payload:
+        $ref: '#/components/schemas/RaceConfig'
+    ServerPlayerWordStarted:
+      name: player:word-started
+      title: A player advanced to their next word
+      payload:
+        $ref: '#/components/schemas/PlayerRoundSnapshot'
+    ServerPlayerWordResolved:
+      name: player:word-resolved
+      title: A player resolved one of their words
+      payload:
+        $ref: '#/components/schemas/PlayerWordResolved'
+    ServerRaceFinished:
+      name: race:finished
+      title: Race finished
+      payload:
+        $ref: '#/components/schemas/RaceFinished'
+    ServerHostMigrated:
+      name: host:migrated
+      title: Host role migrated to another player
+      payload:
+        $ref: '#/components/schemas/HostMigratedPayload'
+    ServerGuessResult:
+      name: guess:result
+      title: Accepted guess (redacted for other players)
+      payload:
+        $ref: '#/components/schemas/ChampionshipGuessResult'
+    ServerRaceGuessResult:
+      name: guess:result
+      title: Accepted race guess (redacted for other players)
+      payload:
+        $ref: '#/components/schemas/RaceGuessResult'
+    ServerError:
+      name: room:error / guess:error
+      title: Rejected payload or domain error
+      payload:
+        $ref: '#/components/schemas/ErrorPayload'
+  schemas:
+    JoinPayload:
+      type: object
+      required: [code, playerId, nickname]
+      properties:
+        code:
+          type: string
+        playerId:
+          type: string
+        nickname:
+          type: string
+    MembershipPayload:
+      type: object
+      required: [code, playerId, sessionSecret]
+      properties:
+        code:
+          type: string
+        playerId:
+          type: string
+        sessionSecret:
+          type: string
+    UpdateSettingsPayload:
+      allOf:
+        - $ref: '#/components/schemas/MembershipPayload'
+        - type: object
+          required: [settings]
+          properties:
+            settings:
+              $ref: '#/components/schemas/RoomSettingsInput'
+    RestartPayload:
+      type: object
+      required: [code, playerId]
+      properties:
+        code:
+          type: string
+        playerId:
+          type: string
+    GuessPayload:
+      type: object
+      required: [code, playerId, nickname, guess, sessionSecret]
+      properties:
+        code:
+          type: string
+        playerId:
+          type: string
+        nickname:
+          type: string
+        guess:
+          type: string
+          minLength: 5
+          maxLength: 5
+        sessionSecret:
+          type: string
+    RoomSettingsInput:
+      type: object
+      properties:
+        wordCount:
+          type: integer
+          format: int32
+        maxAttempts:
+          type: integer
+          format: int32
+        timeLimitMs:
+          type: integer
+          format: int64
+    RoomSettings:
+      type: object
+      required: [wordCount, maxAttempts, timeLimitMs]
+      properties:
+        wordCount:
+          type: integer
+          format: int32
+        maxAttempts:
+          type: integer
+          format: int32
+        timeLimitMs:
+          type: integer
+          format: int64
+    RoomPlayer:
+      type: object
+      required: [playerId, nickname]
+      properties:
+        playerId:
+          type: string
+        nickname:
+          type: string
+    RoomRecord:
+      type: object
+      required: [code, mode, hostId, createdAt, isPublic, settings, status, players]
+      properties:
+        code:
+          type: string
+        mode:
+          type: string
+          enum: [championship, race]
+        hostId:
+          type: string
+        createdAt:
+          type: integer
+          format: int64
+        isPublic:
+          type: boolean
+        settings:
+          $ref: '#/components/schemas/RoomSettings'
+        status:
+          type: string
+          enum: [lobby, in-progress, finished]
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomPlayer'
+    RoomSessionPayload:
+      type: object
+      required: [sessionSecret]
+      properties:
+        sessionSecret:
+          type: string
+    CountdownStartedPayload:
+      type: object
+      required: [code, seconds, reason]
+      properties:
+        code:
+          type: string
+        seconds:
+          type: integer
+          format: int32
+        reason:
+          type: string
+          enum: [start, restart]
+    HostMigratedPayload:
+      type: object
+      required: [code, hostId]
+      properties:
+        code:
+          type: string
+        hostId:
+          type: string
+    LetterFeedback:
+      type: object
+      required: [letter, status]
+      properties:
+        letter:
+          type: string
+        status:
+          type: string
+          enum: [correct, present, absent]
+    Attempt:
+      type: object
+      required: [playerId, nickname, guess, feedback, attemptNumber, createdAt]
+      properties:
+        playerId:
+          type: string
+        nickname:
+          type: string
+        guess:
+          type: string
+          description: Empty string when redacted for another player
+        feedback:
+          type: array
+          items:
+            $ref: '#/components/schemas/LetterFeedback'
+        attemptNumber:
+          type: integer
+          format: int32
+        createdAt:
+          type: integer
+          format: int64
+    RoundSnapshot:
+      type: object
+      required: [roundSequence, wordIndex, wordCount, wordLength, maxAttempts, timeLimitMs, roundStartedAt, phase, tieBreakCandidates]
+      properties:
+        roundSequence:
+          type: integer
+          format: int32
+        wordIndex:
+          type: integer
+          format: int32
+        wordCount:
+          type: integer
+          format: int32
+        wordLength:
+          type: integer
+          format: int32
+        maxAttempts:
+          type: integer
+          format: int32
+        timeLimitMs:
+          type: integer
+          format: int64
+        roundStartedAt:
+          type: integer
+          format: int64
+        phase:
+          type: string
+          enum: [playing, tie-break, finished]
+        tieBreakCandidates:
+          type: array
+          nullable: true
+          items:
+            type: string
+    RoomState:
+      allOf:
+        - $ref: '#/components/schemas/RoundSnapshot'
+        - type: object
+          required: [players, scores, attempts, solvedBy]
+          properties:
+            players:
+              type: array
+              items:
+                $ref: '#/components/schemas/RoomPlayer'
+            scores:
+              type: object
+              additionalProperties:
+                type: integer
+                format: int32
+            attempts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Attempt'
+            solvedBy:
+              type: string
+              nullable: true
+    WordResolved:
+      type: object
+      required: [roundSequence, wordIndex, isTieBreak, reason, winnerId, revealedWord, scores, gameStatus, tieBreakCandidates, finalWinnerIds]
+      properties:
+        roundSequence:
+          type: integer
+          format: int32
+        wordIndex:
+          type: integer
+          format: int32
+        isTieBreak:
+          type: boolean
+        reason:
+          type: string
+          enum: [solved, timeout, exhausted]
+        winnerId:
+          type: string
+          nullable: true
+        revealedWord:
+          type: string
+        scores:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+        gameStatus:
+          type: string
+          enum: [continue, tie-break-started, finished]
+        tieBreakCandidates:
+          type: array
+          nullable: true
+          items:
+            type: string
+        finalWinnerIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+    GameFinished:
+      type: object
+      required: [winnerIds, scores]
+      properties:
+        winnerIds:
+          type: array
+          items:
+            type: string
+        scores:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int32
+    ChampionshipGuessResult:
+      type: object
+      required: [attempt, solved, winnerId, roundSequence]
+      properties:
+        attempt:
+          $ref: '#/components/schemas/Attempt'
+        solved:
+          type: boolean
+        winnerId:
+          type: string
+          nullable: true
+        roundSequence:
+          type: integer
+          format: int32
+    RaceConfig:
+      type: object
+      required: [wordCount, wordLength, timeLimitMs]
+      properties:
+        wordCount:
+          type: integer
+          format: int32
+        wordLength:
+          type: integer
+          format: int32
+        timeLimitMs:
+          type: integer
+          format: int64
+    PlayerProgressSnapshot:
+      type: object
+      required: [playerId, wordIndex, roundStartedAt, finished, won]
+      properties:
+        playerId:
+          type: string
+        wordIndex:
+          type: integer
+          format: int32
+        roundStartedAt:
+          type: integer
+          format: int64
+        finished:
+          type: boolean
+        won:
+          type: boolean
+    RaceRoomState:
+      allOf:
+        - $ref: '#/components/schemas/RaceConfig'
+        - type: object
+          required: [players, progress, attemptsByPlayer, phase, winnerId]
+          properties:
+            players:
+              type: array
+              items:
+                $ref: '#/components/schemas/RoomPlayer'
+            progress:
+              type: array
+              items:
+                $ref: '#/components/schemas/PlayerProgressSnapshot'
+            attemptsByPlayer:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attempt'
+            phase:
+              type: string
+              enum: [playing, finished]
+            winnerId:
+              type: string
+              nullable: true
+    PlayerRoundSnapshot:
+      type: object
+      required: [playerId, wordIndex, roundStartedAt, finished]
+      properties:
+        playerId:
+          type: string
+        wordIndex:
+          type: integer
+          format: int32
+        roundStartedAt:
+          type: integer
+          format: int64
+        finished:
+          type: boolean
+    PlayerWordResolved:
+      type: object
+      required: [playerId, wordIndex, reason, revealedWord, hasNextWord, playerFinished, playerWon, gameFinished, winnerId]
+      properties:
+        playerId:
+          type: string
+        wordIndex:
+          type: integer
+          format: int32
+        reason:
+          type: string
+          enum: [solved, timeout]
+        revealedWord:
+          type: string
+        hasNextWord:
+          type: boolean
+        playerFinished:
+          type: boolean
+        playerWon:
+          type: boolean
+        gameFinished:
+          type: boolean
+        winnerId:
+          type: string
+          nullable: true
+    RaceFinished:
+      type: object
+      properties:
+        winnerId:
+          type: string
+          nullable: true
+    RaceGuessResult:
+      type: object
+      required: [attempt, solved, winnerId, wordIndex]
+      properties:
+        attempt:
+          $ref: '#/components/schemas/Attempt'
+        solved:
+          type: boolean
+        winnerId:
+          type: string
+          nullable: true
+        wordIndex:
+          type: integer
+          format: int32
+    ErrorPayload:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          nullable: true

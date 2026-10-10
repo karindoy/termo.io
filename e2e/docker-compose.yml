@@ -8,14 +8,10 @@ services:
       retries: 15
 
   backend:
-    image: node:20-bookworm-slim
-    user: '${HOST_UID}:${HOST_GID}'
-    working_dir: /workspace
-    volumes:
-      - ..:/workspace
-    command: npm run dev -w backend
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
     environment:
-      HOME: /tmp
       PORT: '4000'
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://frontend:5173
@@ -24,16 +20,10 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test:
-        [
-          'CMD',
-          'node',
-          '-e',
-          "require('http').get('http://localhost:4000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
-        ]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:4000/health']
       interval: 2s
       timeout: 2s
-      retries: 30
+      retries: 60
 
   frontend:
     image: node:20-bookworm-slim

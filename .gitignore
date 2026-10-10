@@ -1,8 +1,33 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+out/
+*.log
+
+# Environment
 .env
 .env.*
-*.log
+!.env.example
+
+# Quarkus / Kotlin / JVM
+.quarkus/
+.kotlin/
+*.class
+
+# Editors / OS
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# E2E artifacts
 e2e/screenshots/
 e2e/test-results/
 e2e/playwright-report/

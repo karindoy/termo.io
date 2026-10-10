@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Socket } from 'socket.io-client';
-import { createSocket } from '../lib/socket';
+import { createSocket, type AppSocket } from '../lib/socket';
 import type { CountdownStartedPayload, HostMigratedPayload, RoomRecord, RoomSessionPayload, RoomSettings } from '../lib/types';
 
 export function useLobby(initialRoom: RoomRecord, playerId: string, nickname: string, onNotFound?: () => void) {
   const { code, mode } = initialRoom;
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<AppSocket | null>(null);
   const sessionSecretRef = useRef<string | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

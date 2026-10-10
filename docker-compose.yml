@@ -6,6 +6,7 @@ services:
     environment:
       PORT: 4000
       CORS_ORIGIN: http://localhost:5173
+      REDIS_URL: redis://redis:6379
       INSTANCE_TAG: A
     depends_on:
       - redis
@@ -17,6 +18,7 @@ services:
     environment:
       PORT: 4000
       CORS_ORIGIN: http://localhost:5173
+      REDIS_URL: redis://redis:6379
       INSTANCE_TAG: B
     depends_on:
       - redis

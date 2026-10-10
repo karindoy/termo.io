@@ -31,3 +31,5 @@ Every doc in this folder follows the same shape:
 ## Ground truth
 
 These docs reflect the codebase as of the commits up to `776976c` (`fix: stop publishing redis port to the host`), plus one uncommitted change to `useGuessInput.ts`/`WordGrid.tsx`/`index.css` (cursor jumps to next empty cell on type) noted in [word-grid-and-input.md](word-grid-and-input.md). If the code has moved on since, re-verify against source before trusting a specific claim — these are snapshots, not living specs.
+
+> **Backend rewrite (Kotlin/Quarkus):** the backend has since been ported from Node.js/Fastify/Socket.io/TypeScript to **Kotlin + Quarkus** (see `backend/pom.xml`). The business rules, HTTP routes, WebSocket event names, and JSON payload shapes these docs describe are unchanged, and the frontend now speaks the same event contract over native WebSockets (`/ws/championship`, `/ws/race`) instead of Socket.io. Specific `backend/src/**/*.ts` file paths below are **historical** — map them to the equivalent `backend/src/main/kotlin/io/termo/**/*.kt` package (`domain`, `application`, `infrastructure`, `presentation`).

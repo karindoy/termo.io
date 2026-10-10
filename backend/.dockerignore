@@ -1,0 +1,4 @@
+# Build context is the repository root, so only the backend sources matter here.
+**
+!backend/pom.xml
+!backend/src/**

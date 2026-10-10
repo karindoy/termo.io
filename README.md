@@ -23,12 +23,22 @@ A competitive, real-time multiplayer word-guessing game in Brazilian Portuguese 
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, TypeScript, Vite |
-| Backend | Node.js, Fastify, TypeScript |
-| Real-time | Socket.io |
+| Backend | Kotlin, Quarkus 3.40 (LTS), Java 21 |
+| API contract | OpenAPI 3.0 (spec-first codegen: JAX-RS interfaces + models) |
+| Real-time contract | AsyncAPI 3.0 over native WebSockets (Quarkus WebSockets Next) |
 | Cache / State | Redis 7 |
 | Containerization | Docker, Docker Compose |
 
 Architecture follows layered/clean architecture: `domain` → `application` → `infrastructure` → `presentation`. All game logic (word matching, scoring, win conditions) lives server-side — the client never receives secret words or computes feedback locally.
+
+### API-first
+
+The REST contract is authored **before** the code and treated as the source of truth:
+
+- **Spec**: [`backend/src/main/resources/META-INF/openapi.yaml`](backend/src/main/resources/META-INF/openapi.yaml) — hand-written, OpenAPI 3.0.
+- **Generated**: the build runs `openapi-generator-maven-plugin` (jaxrs-spec) to produce JAX-RS API interfaces and models under `target/generated-sources/openapi`; the `*ApiImpl` classes implement the generated interfaces and only map the domain to/from generated models. Changing the spec regenerates the contract on the next build.
+- **Served**: `GET /q/openapi` (JSON or YAML via content negotiation) and interactive docs at `/q/swagger-ui`.
+- **WebSockets**: specified separately in [`backend/src/main/openapi/asyncapi.yaml`](backend/src/main/openapi/asyncapi.yaml) (AsyncAPI 3.0), since OpenAPI cannot describe the `/ws/*` event contract.
 
 ---
 
@@ -37,7 +47,8 @@ Architecture follows layered/clean architecture: `domain` → `application` → 
 ### Prerequisites
 
 - [Docker](https://www.docker.com/) and Docker Compose
-- Node.js LTS + npm (for local dev without Docker)
+- JDK 21 + Maven 3.9.16 (or the bundled `backend/mvnw`) for local dev without Docker
+- Node.js LTS + npm (for the frontend and e2e suite)
 
 ### Run with Docker (recommended)
 
@@ -73,12 +84,14 @@ npm run dev:frontend
 
 ```
 termo.io/
-├── backend/          # Fastify + Socket.io server, clean architecture
-│   └── src/
-│       ├── domain/           # Word matching, scoring, game rules
-│       ├── application/      # Use cases + game-mode strategies (incl. daily-modes/)
-│       ├── infrastructure/   # Redis, word dictionary, Socket.io setup
-│       └── presentation/     # HTTP routes (incl. /daily), socket handlers, DTOs
+├── backend/          # Kotlin + Quarkus server (spec-first REST + WebSockets Next)
+│   ├── src/main/kotlin/io/termo/
+│   │   ├── domain/           # Word matching, scoring, game rules
+│   │   ├── application/      # Use cases + game-mode strategies (incl. daily modes)
+│   │   ├── infrastructure/   # Redis, word dictionary, timers, session store
+│   │   └── presentation/     # Generated API impls, WebSocket endpoints, DTOs
+│   ├── src/main/resources/META-INF/openapi.yaml  # REST contract (codegen source of truth)
+│   └── src/main/openapi/asyncapi.yaml            # WebSocket contract
 ├── frontend/         # React + Vite UI
 │   └── src/
 │       ├── components/       # WordGrid, Keyboard, Lobby, PlayerBoard, DailyGameRoom, DailyModeBar...
@@ -170,7 +183,7 @@ See `docker-compose.yml` (repo root) for the full set wired up per service. Neve
 | `INSTANCE_TAG` | `A` | Selects this backend instance's room-code prefix for nginx sticky routing (see `docker-compose.yml` / `nginx/nginx.conf`) |
 | `E2E_FIXED_WORDS` | unset | Comma-separated secret words, consumed in draw order — lets the e2e suite force deterministic word draws. Set automatically by `e2e/run.sh`, not used in normal dev/prod |
 
-The backend also runs global rate limiting (100 req/min/IP, tighter per-route limits on room creation/lookup and daily-guess submission) and `@fastify/helmet` security headers — see `docs/requirements/session-identity-and-security.md`.
+The backend also runs global rate limiting (100 req/min/IP, tighter per-route limits on room creation/lookup and daily-guess submission) and standard security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) — see `docs/requirements/session-identity-and-security.md`.
 
 ---
 

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Socket } from 'socket.io-client';
-import { createSocket } from '../lib/socket';
+import { createSocket, type AppSocket } from '../lib/socket';
 import type {
   Attempt,
   CountdownStartedPayload,
@@ -24,7 +23,7 @@ export interface RaceRevealInfo {
 }
 
 export function useRaceGame(code: string, playerId: string, nickname: string) {
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<AppSocket | null>(null);
   const wordIndexRef = useRef<Record<string, number>>({});
   const sessionSecretRef = useRef<string | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);

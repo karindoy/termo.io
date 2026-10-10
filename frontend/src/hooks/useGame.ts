@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Socket } from 'socket.io-client';
-import { createSocket } from '../lib/socket';
+import { createSocket, type AppSocket } from '../lib/socket';
 import type {
   Attempt,
   CountdownStartedPayload,
@@ -34,7 +33,7 @@ export interface WordHistoryEntry {
 }
 
 export function useGame(code: string, playerId: string, nickname: string) {
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<AppSocket | null>(null);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roundSequenceRef = useRef<number | null>(null);
   const sessionSecretRef = useRef<string | null>(null);
